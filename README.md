@@ -11,3 +11,13 @@ HTTP server for Connect APIs and websites.
 ```shell
 go get github.com/altipla-consulting/doris
 ```
+
+
+## Contributing
+
+You can make pull requests or create issues in GitHub. Any code you send should be formatted using `make gofmt`.
+
+
+## License
+
+[MIT License](LICENSE)
