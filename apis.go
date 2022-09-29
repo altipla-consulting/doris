@@ -32,9 +32,10 @@ func ConnectCORS(origins []string) cors.Options {
 
 // ConnectOptions returns the list of options to register a new serve, including
 // middlewares, codecs, etc.
-func ConnectOptions() []connect.HandlerOption {
+func ConnectOptions(interceptors ...connect.Interceptor) []connect.HandlerOption {
 	return []connect.HandlerOption{
 		connect.WithInterceptors(ServerInterceptors()...),
+		connect.WithInterceptors(interceptors...),
 		connect.WithCodec(new(codecJSON)),
 	}
 }
