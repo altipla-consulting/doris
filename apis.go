@@ -32,7 +32,7 @@ func NewConnectHub(r *routing.Router, opts ...ConnectHubOption) *ConnectHub {
 
 // MountFn should be implemented by a global function in the API package to
 // register itself.
-type MountFn func(opts ...connect.Option) (string, http.Handler)
+type MountFn func(opts ...connect.HandlerOption) (string, http.Handler)
 
 // Mount a new API.
 func (hub *ConnectHub) Mount(fn MountFn) {
@@ -49,8 +49,8 @@ func (hub *ConnectHub) Mount(fn MountFn) {
 	hub.r.PathPrefixHandler(pattern, routing.NewHandlerFromHTTP(handler))
 }
 
-func (hub *ConnectHub) opts() []connect.Option {
-	return []connect.Option{
+func (hub *ConnectHub) opts() []connect.HandlerOption {
+	return []connect.HandlerOption{
 		connect.WithInterceptors(ServerInterceptors()...),
 		connect.WithInterceptors(hub.interceptors...),
 		connect.WithCodec(new(codecJSON)),
