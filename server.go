@@ -24,6 +24,7 @@ type Server struct {
 	cnf      *config
 	ctx      context.Context
 	cancel   context.CancelFunc
+	port     string
 }
 
 func NewServer(opts ...Option) *Server {
@@ -32,6 +33,7 @@ func NewServer(opts ...Option) *Server {
 			routing.WithLogrus(),
 			routing.WithSentry(os.Getenv("SENTRY_DSN")),
 		},
+		port: "8080",
 	}
 	for _, opt := range opts {
 		opt(cnf)
@@ -45,6 +47,7 @@ func NewServer(opts ...Option) *Server {
 		cnf:      cnf,
 		ctx:      ctx,
 		cancel:   cancel,
+		port:     cnf.port,
 	}
 }
 
@@ -52,11 +55,11 @@ func (server *Server) Context() context.Context {
 	return server.ctx
 }
 
-func (server *Server) port() string {
+func (server *Server) finalPort() string {
 	if port := os.Getenv("PORT"); port != "" {
 		return port
 	}
-	return "8080"
+	return server.port
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) error {
@@ -88,7 +91,7 @@ func (server *Server) Serve() {
 	server.internal.Get("/health", healthHandler)
 
 	web := &http.Server{
-		Addr:    ":" + server.port(),
+		Addr:    ":" + server.finalPort(),
 		Handler: h2c.NewHandler(server, new(http2.Server)),
 	}
 	internal := &http.Server{
@@ -108,7 +111,7 @@ func (server *Server) Serve() {
 	}()
 
 	log.WithFields(log.Fields{
-		"port":          server.port(),
+		"port":          server.finalPort(),
 		"internal-port": ":8000",
 		"version":       env.Version(),
 		"name":          env.ServiceName(),
@@ -141,6 +144,7 @@ type config struct {
 	http     []routing.ServerOption
 	profiler bool
 	cors     []string
+	port     string
 }
 
 // WithRoutingOptions configures web server options.
@@ -154,5 +158,13 @@ func WithRoutingOptions(opts ...routing.ServerOption) Option {
 func WithProfiler() Option {
 	return func(cnf *config) {
 		cnf.profiler = true
+	}
+}
+
+// WithCustomPort changes the default port of the application. If the env variable
+// PORT is defined it will override anything configured here.
+func WithCustomPort(port string) Option {
+	return func(cnf *config) {
+		cnf.port = port
 	}
 }
