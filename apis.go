@@ -22,7 +22,7 @@ type ConnectHub struct {
 func NewConnectHub(r *routing.Router, opts ...ConnectHubOption) *ConnectHub {
 	hub := &ConnectHub{
 		r:    r,
-		cors: []string{"studio.buf.build"},
+		cors: []string{"https://studio.buf.build"},
 	}
 	for _, opt := range opts {
 		opt(hub)
