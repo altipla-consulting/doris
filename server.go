@@ -112,7 +112,7 @@ func (server *Server) Serve() {
 
 	log.WithFields(log.Fields{
 		"port":          server.finalPort(),
-		"internal-port": ":8000",
+		"internal-port": "8000",
 		"version":       env.Version(),
 		"name":          env.ServiceName(),
 	}).Info("Instance initialized successfully!")
