@@ -116,11 +116,11 @@ func (server *Server) Serve() {
 	go func() {
 		if server.listener != nil {
 			if err := internal.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Fatalf("failed to serve: %s", err)
+				log.Fatalf("failed to serve internal: %s", err)
 			}
 		} else {
 			if err := internal.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Fatalf("failed to serve: %s", err)
+				log.Fatalf("failed to serve internal: %s", err)
 			}
 		}
 	}()
