@@ -104,7 +104,7 @@ func (server *Server) Serve() {
 
 	go func() {
 		if server.listener != nil {
-			if err := web.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if err := web.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
 				log.Fatalf("failed to serve: %s", err)
 			}
 		} else {
@@ -115,7 +115,7 @@ func (server *Server) Serve() {
 	}()
 	go func() {
 		if server.listener != nil {
-			if err := internal.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if err := internal.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
 				log.Fatalf("failed to serve internal: %s", err)
 			}
 		} else {
