@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -104,22 +105,22 @@ func (server *Server) Serve() {
 
 	go func() {
 		if server.listener != nil {
-			if err := web.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
+			if err := web.Serve(server.listener); err != nil && !isClosingError(err) {
 				log.Fatalf("failed to serve: %s", err)
 			}
 		} else {
-			if err := web.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if err := web.ListenAndServe(); err != nil && !isClosingError(err) {
 				log.Fatalf("failed to serve: %s", err)
 			}
 		}
 	}()
 	go func() {
 		if server.listener != nil {
-			if err := internal.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
+			if err := internal.Serve(server.listener); err != nil && !isClosingError(err) {
 				log.Fatalf("failed to serve internal: %s", err)
 			}
 		} else {
-			if err := internal.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if err := internal.ListenAndServe(); err != nil && !isClosingError(err) {
 				log.Fatalf("failed to serve internal: %s", err)
 			}
 		}
@@ -150,6 +151,10 @@ func (server *Server) Serve() {
 		_ = web.Shutdown(shutdownctx)
 	}()
 	wg.Wait()
+}
+
+func isClosingError(err error) bool {
+	return errors.Is(err, http.ErrServerClosed) || errors.Is(err, net.ErrClosed) || strings.Contains(err.Error(), "use of closed network connection")
 }
 
 // Option of a server.
