@@ -3,6 +3,7 @@ package doris
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -25,6 +26,7 @@ type Server struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	port     string
+	listener net.Listener
 }
 
 func NewServer(opts ...Option) *Server {
@@ -48,6 +50,7 @@ func NewServer(opts ...Option) *Server {
 		ctx:      ctx,
 		cancel:   cancel,
 		port:     cnf.port,
+		listener: cnf.listener,
 	}
 }
 
@@ -100,13 +103,25 @@ func (server *Server) Serve() {
 	}
 
 	go func() {
-		if err := web.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("failed to serve: %s", err)
+		if server.listener != nil {
+			if err := web.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("failed to serve: %s", err)
+			}
+		} else {
+			if err := web.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("failed to serve: %s", err)
+			}
 		}
 	}()
 	go func() {
-		if err := internal.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("failed to serve: %s", err)
+		if server.listener != nil {
+			if err := internal.Serve(server.listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("failed to serve: %s", err)
+			}
+		} else {
+			if err := internal.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("failed to serve: %s", err)
+			}
 		}
 	}()
 
@@ -145,6 +160,7 @@ type config struct {
 	profiler bool
 	cors     []string
 	port     string
+	listener net.Listener
 }
 
 // WithRoutingOptions configures web server options.
@@ -166,5 +182,13 @@ func WithProfiler() Option {
 func WithCustomPort(port string) Option {
 	return func(cnf *config) {
 		cnf.port = port
+	}
+}
+
+// WithListener configures the listener to use for the web server. It is useful to
+// serve in custom configurations like a Unix socket or Tailscale.
+func WithListener(listener net.Listener) Option {
+	return func(cnf *config) {
+		cnf.listener = listener
 	}
 }
