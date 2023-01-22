@@ -41,7 +41,7 @@ func (hub *ConnectHub) Mount(fn MountFn) {
 		cnf := cors.Options{
 			AllowedOrigins: hub.cors,
 			AllowedMethods: []string{http.MethodPost, http.MethodOptions},
-			AllowedHeaders: []string{"authorization", "content-type"},
+			AllowedHeaders: []string{"authorization", "content-type", "connect-timeout-ms"},
 			MaxAge:         300,
 		}
 		handler = cors.New(cnf).Handler(handler)
