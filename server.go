@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"golang.org/x/sync/errgroup"
 	"libs.altipla.consulting/env"
 	"libs.altipla.consulting/errors"
 	"libs.altipla.consulting/routing"
@@ -28,6 +29,8 @@ type Server struct {
 	cancel   context.CancelFunc
 	port     string
 	listener net.Listener
+	grp      *errgroup.Group
+	grpctx   context.Context
 }
 
 func NewServer(opts ...Option) *Server {
@@ -44,17 +47,22 @@ func NewServer(opts ...Option) *Server {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	grp, grpctx := errgroup.WithContext(ctx)
+
 	return &Server{
 		Server:   routing.NewServer(cnf.http...),
 		internal: routing.NewServer(routing.WithLogrus()),
 		cnf:      cnf,
 		ctx:      ctx,
+		grp:      grp,
+		grpctx:   grpctx,
 		cancel:   cancel,
 		port:     cnf.port,
 		listener: cnf.listener,
 	}
 }
 
+// Context returns a context that will be canceled when the server is stopped.
 func (server *Server) Context() context.Context {
 	return server.ctx
 }
@@ -64,6 +72,19 @@ func (server *Server) finalPort() string {
 		return port
 	}
 	return server.port
+}
+
+// GoBackground runs a background goroutine that will be canceled when the server is stopped.
+// The function should return when the context is canceled.
+// If the function returns an error, the server will be stopped prematurely.
+// The server will not exit until all background goroutines have finished.
+func (server *Server) GoBackground(fn func(ctx context.Context) error) {
+	server.grp.Go(func() error {
+		if err := fn(server.grpctx); err != nil {
+			return fmt.Errorf("background task failed: %w", err)
+		}
+		return nil
+	})
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) error {
@@ -149,6 +170,7 @@ func (server *Server) Serve() {
 
 		_ = internal.Shutdown(shutdownctx)
 		_ = web.Shutdown(shutdownctx)
+		server.grp.Wait()
 	}()
 	wg.Wait()
 }
