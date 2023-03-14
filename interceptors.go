@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/altipla-consulting/errors"
+	"github.com/altipla-consulting/sentry"
 	"github.com/bufbuild/connect-go"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"libs.altipla.consulting/env"
-	"libs.altipla.consulting/errors"
-	"libs.altipla.consulting/sentry"
 )
 
 func ServerInterceptors() []connect.Interceptor {
@@ -58,8 +58,6 @@ func sentryLoggerInterceptor() connect.Interceptor {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, in connect.AnyRequest) (connect.AnyResponse, error) {
 			defer client.ReportPanics(ctx)
-
-			ctx = sentry.WithContextRPC(ctx, env.ServiceName(), in.Spec().Procedure)
 
 			reply, err := next(ctx, in)
 			if err != nil {

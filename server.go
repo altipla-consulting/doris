@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"cloud.google.com/go/profiler"
+	"github.com/altipla-consulting/errors"
 	"github.com/sethvargo/go-signalcontext"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
 	"libs.altipla.consulting/env"
-	"libs.altipla.consulting/errors"
 	"libs.altipla.consulting/routing"
 )
 

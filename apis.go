@@ -3,11 +3,11 @@ package doris
 import (
 	"net/http"
 
+	"github.com/altipla-consulting/errors"
 	"github.com/bufbuild/connect-go"
 	"github.com/rs/cors"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"libs.altipla.consulting/errors"
 	"libs.altipla.consulting/routing"
 )
 

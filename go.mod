@@ -4,11 +4,13 @@ go 1.18
 
 require (
 	cloud.google.com/go/profiler v0.3.1
+	github.com/altipla-consulting/errors v1.2.2
+	github.com/altipla-consulting/sentry v0.4.0
 	github.com/bufbuild/connect-go v1.5.2
 	github.com/rs/cors v1.8.3
 	github.com/sethvargo/go-signalcontext v0.2.1
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	golang.org/x/net v0.7.0
 	golang.org/x/sync v0.1.0
 	google.golang.org/protobuf v1.28.1
@@ -20,7 +22,7 @@ require (
 	cloud.google.com/go/compute v1.18.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/getsentry/sentry-go v0.18.0 // indirect
+	github.com/getsentry/sentry-go v0.19.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
