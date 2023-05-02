@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	cloud.google.com/go/profiler v0.3.1
+	github.com/VictoriaMetrics/metrics v1.23.1
 	github.com/altipla-consulting/errors v1.2.5
 	github.com/altipla-consulting/sentry v0.4.3
 	github.com/bufbuild/connect-go v1.7.0
@@ -32,6 +33,8 @@ require (
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/valyala/fastrand v1.1.0 // indirect
+	github.com/valyala/histogram v1.2.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.8.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect

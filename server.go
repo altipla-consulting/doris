@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/profiler"
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/altipla-consulting/errors"
 	"github.com/sethvargo/go-signalcontext"
 	log "github.com/sirupsen/logrus"
@@ -92,6 +93,11 @@ func healthHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func metricsHandler(w http.ResponseWriter, r *http.Request) error {
+	metrics.WritePrometheus(w, true)
+	return nil
+}
+
 func (server *Server) Serve() {
 	signalctx, done := signalcontext.OnInterrupt()
 	defer done()
@@ -114,6 +120,7 @@ func (server *Server) Serve() {
 
 	server.Get("/health", healthHandler)
 	server.internal.Get("/health", healthHandler)
+	server.internal.Get("/metrics", metricsHandler)
 
 	web := &http.Server{
 		Addr:    ":" + server.finalPort(),
