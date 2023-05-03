@@ -5,6 +5,7 @@ go 1.18
 require (
 	cloud.google.com/go/profiler v0.3.1
 	github.com/VictoriaMetrics/metrics v1.23.1
+	github.com/altipla-consulting/env v0.0.1
 	github.com/altipla-consulting/errors v1.2.5
 	github.com/altipla-consulting/sentry v0.4.3
 	github.com/bufbuild/connect-go v1.7.0

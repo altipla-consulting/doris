@@ -12,13 +12,13 @@ import (
 
 	"cloud.google.com/go/profiler"
 	"github.com/VictoriaMetrics/metrics"
+	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
 	"github.com/sethvargo/go-signalcontext"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
-	"libs.altipla.consulting/env"
 	"libs.altipla.consulting/routing"
 )
 
@@ -89,7 +89,7 @@ func (server *Server) GoBackground(fn func(ctx context.Context) error) {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) error {
-	fmt.Fprintf(w, "%s is ok\n", env.ServiceName())
+	fmt.Fprintf(w, "%v %v is ok\n", env.ServiceName(), env.Version())
 	return nil
 }
 

@@ -14,6 +14,8 @@ cloud.google.com/go/storage v1.29.0 h1:6weCgzRvMg7lzuUurI4697AqIRPU1SvzHhynwpW31
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/VictoriaMetrics/metrics v1.23.1 h1:/j8DzeJBxSpL2qSIdqnRFLvQQhbJyJbbEi22yMm7oL0=
 github.com/VictoriaMetrics/metrics v1.23.1/go.mod h1:rAr/llLpEnAdTehiNlUxKgnjcOuROSzpw0GvjpEbvFc=
+github.com/altipla-consulting/env v0.0.1 h1:0Gu26nDozcADAQ5STZj/YJlEZEUmXESDugTxpYbMnH0=
+github.com/altipla-consulting/env v0.0.1/go.mod h1:0wGCiA8OUISdQbBVS5bBeJAteFThsVuQAgDIZUYDFiA=
 github.com/altipla-consulting/errors v1.2.5 h1:/xIiJq8FX1BFJNqvATutMqIcN5o6/RiReTexQm84BwM=
 github.com/altipla-consulting/errors v1.2.5/go.mod h1:wqLbQEvpmFHArZcU8AvRKZuzeF3LL2gw+dhk3+ztikQ=
 github.com/altipla-consulting/sentry v0.4.3 h1:7n6ACip2eVvk9LxdQrtK7Zd79FuuKK9BEslZqYQvwtM=

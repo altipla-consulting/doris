@@ -10,7 +10,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"libs.altipla.consulting/env"
+	"github.com/altipla-consulting/env"
 )
 
 func ServerInterceptors() []connect.Interceptor {
