@@ -88,6 +88,11 @@ func (server *Server) GoBackground(fn func(ctx context.Context) error) {
 	})
 }
 
+// Internal returns a router to register private endpoints.
+func (server *Server) Internal() *routing.Router {
+	return server.internal.Router
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) error {
 	fmt.Fprintf(w, "%v %v is ok\n", env.ServiceName(), env.Version())
 	return nil
