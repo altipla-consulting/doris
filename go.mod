@@ -10,7 +10,6 @@ require (
 	github.com/altipla-consulting/sentry v0.4.3
 	github.com/bufbuild/connect-go v1.7.0
 	github.com/rs/cors v1.9.0
-	github.com/sethvargo/go-signalcontext v0.2.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/net v0.9.0

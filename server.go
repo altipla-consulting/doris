@@ -7,14 +7,15 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/profiler"
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
-	"github.com/sethvargo/go-signalcontext"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -104,7 +105,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (server *Server) Serve() {
-	signalctx, done := signalcontext.OnInterrupt()
+	signalctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
 	if os.Getenv("SENTRY_DSN") != "" {
