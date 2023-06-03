@@ -105,7 +105,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (server *Server) Serve() {
-	signalctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	signalctx, done := signal.NotifyContext(server.ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
 	if os.Getenv("SENTRY_DSN") != "" {
