@@ -3,6 +3,7 @@ package doris
 import (
 	"context"
 	"fmt"
+	stdlog "log" // revive:disable-line:imports-blacklist
 	"net"
 	"net/http"
 	"os"
@@ -127,13 +128,26 @@ func (server *Server) Serve() {
 	server.internal.Get("/health", healthHandler)
 	server.internal.Get("/metrics", metricsHandler)
 
+	wserver := log.WithFields(log.Fields{
+		"stdlib": "http",
+		"server": "internal",
+	}).Writer()
+	defer wserver.Close()
 	web := &http.Server{
-		Addr:    ":" + server.finalPort(),
-		Handler: h2c.NewHandler(server, new(http2.Server)),
+		Addr:     ":" + server.finalPort(),
+		Handler:  h2c.NewHandler(server, new(http2.Server)),
+		ErrorLog: stdlog.New(wserver, "", 0),
 	}
+
+	winternal := log.WithFields(log.Fields{
+		"stdlib": "http",
+		"server": "internal",
+	}).Writer()
+	defer winternal.Close()
 	internal := &http.Server{
-		Addr:    ":8000",
-		Handler: server.internal,
+		Addr:     ":8000",
+		Handler:  server.internal,
+		ErrorLog: stdlog.New(winternal, "", 0),
 	}
 
 	go func() {

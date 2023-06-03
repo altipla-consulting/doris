@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
 	"github.com/altipla-consulting/sentry"
 	"github.com/bufbuild/connect-go"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"github.com/altipla-consulting/env"
 )
 
 func ServerInterceptors() []connect.Interceptor {
