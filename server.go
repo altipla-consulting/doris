@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/profiler"
@@ -180,25 +179,19 @@ func (server *Server) Serve() {
 		"name":          env.ServiceName(),
 	}).Info("Instance initialized successfully!")
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	<-signalctx.Done()
+	log.Info("Shutting down")
 
-		<-signalctx.Done()
+	server.cancel()
 
-		log.Info("Shutting down")
+	shutdownctx, done := context.WithTimeout(context.Background(), 25*time.Second)
+	defer done()
+	_ = internal.Shutdown(shutdownctx)
+	_ = internal.Close()
+	_ = web.Shutdown(shutdownctx)
+	_ = web.Close()
 
-		server.cancel()
-
-		shutdownctx, done := context.WithTimeout(context.Background(), 25*time.Second)
-		defer done()
-
-		_ = internal.Shutdown(shutdownctx)
-		_ = web.Shutdown(shutdownctx)
-		server.grp.Wait()
-	}()
-	wg.Wait()
+	server.grp.Wait()
 }
 
 func isClosingError(err error) bool {
