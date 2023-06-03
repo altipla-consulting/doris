@@ -108,10 +108,6 @@ func (server *Server) Serve() {
 	signalctx, done := signal.NotifyContext(server.ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	if os.Getenv("SENTRY_DSN") != "" {
-		log.WithField("dsn", os.Getenv("SENTRY_DSN")).Info("Sentry enabled")
-	}
-
 	if server.cnf.profiler {
 		log.Info("Stackdriver Profiler enabled")
 
@@ -173,6 +169,9 @@ func (server *Server) Serve() {
 		}
 	}()
 
+	if os.Getenv("SENTRY_DSN") != "" {
+		log.WithField("dsn", os.Getenv("SENTRY_DSN")).Info("Sentry enabled")
+	}
 	log.WithFields(log.Fields{
 		"port":          server.finalPort(),
 		"internal-port": "8000",
