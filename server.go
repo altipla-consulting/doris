@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"cloud.google.com/go/profiler"
-	"github.com/VictoriaMetrics/metrics"
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
 	log "github.com/sirupsen/logrus"
@@ -23,57 +21,49 @@ import (
 	"libs.altipla.consulting/routing"
 )
 
+// Server is the root server of the application.
 type Server struct {
-	*routing.Server
-	internal *routing.Server
-	cnf      *config
-	ctx      context.Context
-	cancel   context.CancelFunc
-	port     string
-	listener net.Listener
-	grp      *errgroup.Group
-	grpctx   context.Context
+	*ServerPort
+	ctx    context.Context
+	cancel context.CancelFunc
+	grp    *errgroup.Group
+	grpctx context.Context
+
+	ports []*ServerPort
 }
 
+// NewServer creates a new root server in the default port. It won't start until
+// you call Serve() on it.
 func NewServer(opts ...Option) *Server {
-	cnf := &config{
-		http: []routing.ServerOption{
-			routing.WithLogrus(),
-			routing.WithSentry(os.Getenv("SENTRY_DSN")),
-		},
-		port: "8080",
-	}
-	for _, opt := range opts {
-		opt(cnf)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-
 	grp, grpctx := errgroup.WithContext(ctx)
 
-	return &Server{
-		Server:   routing.NewServer(cnf.http...),
-		internal: routing.NewServer(routing.WithLogrus()),
-		cnf:      cnf,
-		ctx:      ctx,
-		grp:      grp,
-		grpctx:   grpctx,
-		cancel:   cancel,
-		port:     cnf.port,
-		listener: cnf.listener,
+	server := &Server{
+		ctx:    ctx,
+		cancel: cancel,
+		grp:    grp,
+		grpctx: grpctx,
 	}
+
+	// Register an internal port for health checks and metrics.
+	// It should be first to shutdown it first too and disconnect live connections
+	// as soon as possible when restarting the app.
+	internal := server.RegisterPort("8000")
+	internal.Get("/health", healthHandler)
+	internal.Get("/metrics", metricsHandler)
+
+	// Register the first default port of the server.
+	sp := newServerPort(opts...)
+	sp.Get("/health", healthHandler)
+	server.ServerPort = sp
+	server.ports = append(server.ports, sp)
+
+	return server
 }
 
 // Context returns a context that will be canceled when the server is stopped.
 func (server *Server) Context() context.Context {
 	return server.ctx
-}
-
-func (server *Server) finalPort() string {
-	if port := os.Getenv("PORT"); port != "" {
-		return port
-	}
-	return server.port
 }
 
 // GoBackground runs a background goroutine that will be canceled when the server is stopped.
@@ -89,26 +79,19 @@ func (server *Server) GoBackground(fn func(ctx context.Context) error) {
 	})
 }
 
-// Internal returns a router to register private endpoints.
-func (server *Server) Internal() *routing.Router {
-	return server.internal.Router
+// Register a new child server in a different port.
+func (server *Server) RegisterPort(port string, opts ...Option) *ServerPort {
+	sp := newServerPort(append(opts, WithPort(port))...)
+	server.ports = append(server.ports, sp)
+	return sp
 }
 
-func healthHandler(w http.ResponseWriter, r *http.Request) error {
-	fmt.Fprintf(w, "%v %v is ok\n", env.ServiceName(), env.Version())
-	return nil
-}
-
-func metricsHandler(w http.ResponseWriter, r *http.Request) error {
-	metrics.WritePrometheus(w, true)
-	return nil
-}
-
+// Serve starts the server and blocks until it is stopped with a signal.
 func (server *Server) Serve() {
 	signalctx, done := signal.NotifyContext(server.ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	if server.cnf.profiler {
+	if server.profiler {
 		log.Info("Stackdriver Profiler enabled")
 
 		cnf := profiler.Config{
@@ -120,64 +103,24 @@ func (server *Server) Serve() {
 		}
 	}
 
-	server.Get("/health", healthHandler)
-	server.internal.Get("/health", healthHandler)
-	server.internal.Get("/metrics", metricsHandler)
-
-	wserver := log.WithFields(log.Fields{
-		"stdlib": "http",
-		"server": "internal",
-	}).Writer()
-	defer wserver.Close()
-	web := &http.Server{
-		Addr:     ":" + server.finalPort(),
-		Handler:  h2c.NewHandler(server, new(http2.Server)),
-		ErrorLog: stdlog.New(wserver, "", 0),
+	for _, sp := range server.ports {
+		sp.serve(server.grp)
 	}
-
-	winternal := log.WithFields(log.Fields{
-		"stdlib": "http",
-		"server": "internal",
-	}).Writer()
-	defer winternal.Close()
-	internal := &http.Server{
-		Addr:     ":8000",
-		Handler:  server.internal,
-		ErrorLog: stdlog.New(winternal, "", 0),
-	}
-
-	go func() {
-		if server.listener != nil {
-			if err := web.Serve(server.listener); err != nil && !isClosingError(err) {
-				log.Fatalf("failed to serve: %s", err)
-			}
-		} else {
-			if err := web.ListenAndServe(); err != nil && !isClosingError(err) {
-				log.Fatalf("failed to serve: %s", err)
-			}
-		}
-	}()
-	go func() {
-		if server.listener != nil {
-			if err := internal.Serve(server.listener); err != nil && !isClosingError(err) {
-				log.Fatalf("failed to serve internal: %s", err)
-			}
-		} else {
-			if err := internal.ListenAndServe(); err != nil && !isClosingError(err) {
-				log.Fatalf("failed to serve internal: %s", err)
-			}
-		}
-	}()
 
 	if os.Getenv("SENTRY_DSN") != "" {
 		log.WithField("dsn", os.Getenv("SENTRY_DSN")).Info("Sentry enabled")
 	}
-	log.WithFields(log.Fields{
-		"port":          server.finalPort(),
-		"internal-port": "8000",
-		"version":       env.Version(),
-		"name":          env.ServiceName(),
-	}).Info("Instance initialized successfully!")
+
+	fields := log.Fields{}
+	for i, sp := range server.ports {
+		fields[fmt.Sprintf("listen.%d", i)] = sp.port
+	}
+	log.
+		WithFields(fields).
+		WithFields(log.Fields{
+			"version": env.Version(),
+			"name":    env.ServiceName(),
+		}).Info("Instance initialized successfully!")
 
 	<-signalctx.Done()
 	log.Info("Shutting down")
@@ -186,55 +129,72 @@ func (server *Server) Serve() {
 
 	shutdownctx, done := context.WithTimeout(context.Background(), 25*time.Second)
 	defer done()
-	_ = internal.Shutdown(shutdownctx)
-	_ = internal.Close()
-	_ = web.Shutdown(shutdownctx)
-	_ = web.Close()
+	for _, sp := range server.ports {
+		sp.shutdown(shutdownctx)
+	}
 
 	server.grp.Wait()
 }
 
-func isClosingError(err error) bool {
-	return errors.Is(err, http.ErrServerClosed) || errors.Is(err, net.ErrClosed) || strings.Contains(err.Error(), "use of closed network connection")
-}
+// ServerPort is a child server in a different custom port.
+type ServerPort struct {
+	*routing.Server
 
-// Option of a server.
-type Option func(cnf *config)
-
-type config struct {
+	// Configurations from options passed when initializing the port.
 	http     []routing.ServerOption
 	profiler bool
-	cors     []string
-	port     string
 	listener net.Listener
+	port     string
+
+	// Internal initialization when serving to shutdown it down afterwards.
+	web *http.Server
 }
 
-// WithRoutingOptions configures web server options.
-func WithRoutingOptions(opts ...routing.ServerOption) Option {
-	return func(cnf *config) {
-		cnf.http = append(cnf.http, opts...)
+func newServerPort(opts ...Option) *ServerPort {
+	sp := &ServerPort{
+		http: []routing.ServerOption{
+			routing.WithLogrus(),
+			routing.WithSentry(os.Getenv("SENTRY_DSN")),
+		},
+		port: "8080",
 	}
+	for _, opt := range opts {
+		opt(sp)
+	}
+
+	sp.Server = routing.NewServer(sp.http...)
+
+	return sp
 }
 
-// WithProfiler enables the Google Cloud Profiler for the application.
-func WithProfiler() Option {
-	return func(cnf *config) {
-		cnf.profiler = true
+func (sp *ServerPort) serve(grp *errgroup.Group) {
+	w := log.WithFields(log.Fields{
+		"stdlib": "http",
+		"port":   sp.port,
+	}).Writer()
+	defer w.Close()
+
+	sp.web = &http.Server{
+		Addr:     ":" + sp.port,
+		Handler:  h2c.NewHandler(sp, new(http2.Server)),
+		ErrorLog: stdlog.New(w, "", 0),
 	}
+
+	grp.Go(func() error {
+		if sp.listener != nil {
+			if err := sp.web.Serve(sp.listener); err != nil && !isClosingError(err) {
+				return errors.Errorf("failed to serve: %w", err)
+			}
+		} else {
+			if err := sp.web.ListenAndServe(); err != nil && !isClosingError(err) {
+				return errors.Errorf("failed to serve: %w", err)
+			}
+		}
+		return nil
+	})
 }
 
-// WithCustomPort changes the default port of the application. If the env variable
-// PORT is defined it will override anything configured here.
-func WithCustomPort(port string) Option {
-	return func(cnf *config) {
-		cnf.port = port
-	}
-}
-
-// WithListener configures the listener to use for the web server. It is useful to
-// serve in custom configurations like a Unix socket or Tailscale.
-func WithListener(listener net.Listener) Option {
-	return func(cnf *config) {
-		cnf.listener = listener
-	}
+func (sp *ServerPort) shutdown(ctx context.Context) {
+	_ = sp.web.Shutdown(ctx)
+	_ = sp.web.Close()
 }
