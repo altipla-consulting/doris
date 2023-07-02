@@ -49,12 +49,10 @@ func NewServer(opts ...Option) *Server {
 	// It should be first to shutdown it first too and disconnect live connections
 	// as soon as possible when restarting the app.
 	internal := server.RegisterPort("8000")
-	internal.Get("/health", healthHandler)
 	internal.Get("/metrics", metricsHandler)
 
 	// Register the first default port of the server.
 	sp := newServerPort(opts...)
-	sp.Get("/health", healthHandler)
 	server.ServerPort = sp
 	server.ports = append(server.ports, sp)
 
@@ -163,6 +161,8 @@ func newServerPort(opts ...Option) *ServerPort {
 	}
 
 	sp.Server = routing.NewServer(sp.http...)
+
+	sp.Get("/health", healthHandler)
 
 	return sp
 }
