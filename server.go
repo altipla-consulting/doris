@@ -27,7 +27,6 @@ type Server struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	grp    *errgroup.Group
-	grpctx context.Context
 
 	ports []*ServerPort
 }
@@ -36,13 +35,12 @@ type Server struct {
 // you call Serve() on it.
 func NewServer(opts ...Option) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
-	grp, grpctx := errgroup.WithContext(ctx)
+	grp, ctx := errgroup.WithContext(ctx)
 
 	server := &Server{
 		ctx:    ctx,
 		cancel: cancel,
 		grp:    grp,
-		grpctx: grpctx,
 	}
 
 	// Register an internal port for health checks and metrics.
@@ -70,7 +68,7 @@ func (server *Server) Context() context.Context {
 // The server will not exit until all background goroutines have finished.
 func (server *Server) GoBackground(fn func(ctx context.Context) error) {
 	server.grp.Go(func() error {
-		if err := fn(server.grpctx); err != nil {
+		if err := fn(server.ctx); err != nil {
 			return fmt.Errorf("background task failed: %w", err)
 		}
 		return nil
