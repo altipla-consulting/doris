@@ -42,17 +42,17 @@ func NewServer(opts ...Option) *Server {
 		cancel: cancel,
 		grp:    grp,
 	}
+	server.ServerPort = newServerPort(server, opts, false)
 
 	// Register an internal port for health checks and metrics.
 	// It should be first to shutdown it first too and disconnect live connections
 	// as soon as possible when restarting the app.
-	internal := server.RegisterPort("8000")
+	internal := newServerPort(server, opts, true)
 	internal.Get("/metrics", metricsHandler)
+	server.ports = append(server.ports, internal)
 
 	// Register the first default port of the server.
-	sp := newServerPort(opts...)
-	server.ServerPort = sp
-	server.ports = append(server.ports, sp)
+	server.ports = append(server.ports, server.ServerPort)
 
 	return server
 }
@@ -77,7 +77,7 @@ func (server *Server) GoBackground(fn func(ctx context.Context) error) {
 
 // Register a new child server in a different port.
 func (server *Server) RegisterPort(port string, opts ...Option) *ServerPort {
-	sp := newServerPort(append(opts, WithPort(port))...)
+	sp := newServerPort(nil, append(opts, WithPort(port)), false)
 	server.ports = append(server.ports, sp)
 	return sp
 }
@@ -151,7 +151,7 @@ type ServerPort struct {
 	web *http.Server
 }
 
-func newServerPort(opts ...Option) *ServerPort {
+func newServerPort(s *Server, opts []Option, internal bool) *ServerPort {
 	sp := &ServerPort{
 		http: []routing.ServerOption{
 			routing.WithLogrus(),
@@ -160,7 +160,7 @@ func newServerPort(opts ...Option) *ServerPort {
 		port: "8080",
 	}
 	for _, opt := range opts {
-		opt(sp)
+		opt(s, sp, internal)
 	}
 
 	sp.Server = routing.NewServer(sp.http...)
