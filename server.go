@@ -132,7 +132,9 @@ func (server *Server) Serve() {
 		sp.shutdown(shutdownctx)
 	}
 
-	server.grp.Wait()
+	if err := server.grp.Wait(); err != nil {
+		log.WithFields(errors.LogFields(err)).Fatal("Error starting the server")
+	}
 }
 
 // ServerPort is a child server in a different custom port.
