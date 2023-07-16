@@ -86,9 +86,6 @@ func (server *Server) RegisterPort(port string, opts ...Option) *ServerPort {
 
 // Serve starts the server and blocks until it is stopped with a signal.
 func (server *Server) Serve() {
-	signalctx, done := signal.NotifyContext(server.ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer done()
-
 	if server.profiler {
 		log.Info("Stackdriver Profiler enabled")
 
@@ -120,9 +117,15 @@ func (server *Server) Serve() {
 			"name":    env.ServiceName(),
 		}).Info("Instance initialized successfully!")
 
-	<-signalctx.Done()
-	log.Info("Shutting down")
+	signalctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer done()
 
+	select {
+	case <-signalctx.Done():
+	case <-server.ctx.Done():
+	}
+
+	log.Info("Shutting down")
 	server.cancel()
 
 	shutdownctx, done := context.WithTimeout(context.Background(), 25*time.Second)
