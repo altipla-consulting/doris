@@ -159,6 +159,9 @@ func newServerPort(s *Server, opts []Option, internal bool) *ServerPort {
 		},
 		port: "8080",
 	}
+	if internal {
+		sp.port = "8000"
+	}
 	for _, opt := range opts {
 		opt(s, sp, internal)
 	}
