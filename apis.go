@@ -41,8 +41,19 @@ func (hub *ConnectHub) Mount(fn MountFn) {
 		cnf := cors.Options{
 			AllowedOrigins: hub.cors,
 			AllowedMethods: []string{http.MethodPost, http.MethodOptions},
-			AllowedHeaders: []string{"authorization", "content-type", "connect-timeout-ms", "connect-protocol-version"},
-			MaxAge:         300,
+			AllowedHeaders: []string{
+				// Generic headers of any request.
+				"authorization",
+				"content-type",
+
+				// Connect specific headers.
+				"connect-timeout-ms",
+				"connect-protocol-version",
+
+				// Added by iPhone Safari.
+				"user-agent",
+			},
+			MaxAge: 300,
 		}
 		handler = cors.New(cnf).Handler(handler)
 	}
