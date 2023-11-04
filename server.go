@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"cloud.google.com/go/profiler"
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
 	log "github.com/sirupsen/logrus"
@@ -84,18 +83,6 @@ func (server *Server) RegisterPort(port string, opts ...Option) *ServerPort {
 
 // Serve starts the server and blocks until it is stopped with a signal.
 func (server *Server) Serve() {
-	if server.profiler {
-		log.Info("Stackdriver Profiler enabled")
-
-		cnf := profiler.Config{
-			Service:        env.ServiceName(),
-			ServiceVersion: env.Version(),
-		}
-		if err := profiler.Start(cnf); err != nil {
-			log.Fatalf("failed to configure profiler: %s", err)
-		}
-	}
-
 	for _, sp := range server.ports {
 		sp.serve(server.grp)
 	}
@@ -143,7 +130,6 @@ type ServerPort struct {
 
 	// Configurations from options passed when initializing the port.
 	http     []routing.ServerOption
-	profiler bool
 	listener net.Listener
 	port     string
 
