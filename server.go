@@ -2,8 +2,8 @@ package doris
 
 import (
 	"context"
-	"fmt"
-	stdlog "log" // revive:disable-line:imports-blacklist
+	"fmt" // revive:disable-line:imports-blacklist
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -13,7 +13,6 @@ import (
 
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
@@ -87,20 +86,17 @@ func (server *Server) Serve() {
 		sp.serve(server.grp)
 	}
 
+	fields := []any{
+		slog.String("version", env.Version()),
+		slog.String("name", env.ServiceName()),
+	}
 	if os.Getenv("SENTRY_DSN") != "" {
-		log.WithField("dsn", os.Getenv("SENTRY_DSN")).Info("Sentry enabled")
+		slog.String("sentry", os.Getenv("SENTRY_DSN"))
 	}
-
-	fields := log.Fields{}
 	for i, sp := range server.ports {
-		fields[fmt.Sprintf("listen.%d", i)] = sp.port
+		fields = append(fields, slog.String(fmt.Sprintf("listen.%d", i), sp.port))
 	}
-	log.
-		WithFields(fields).
-		WithFields(log.Fields{
-			"version": env.Version(),
-			"name":    env.ServiceName(),
-		}).Info("Instance initialized successfully!")
+	slog.Info("Instance initialized successfully!", fields...)
 
 	signalctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
@@ -110,7 +106,7 @@ func (server *Server) Serve() {
 	case <-server.ctx.Done():
 	}
 
-	log.Info("Shutting down")
+	slog.Info("Shutting down")
 	server.cancel()
 
 	shutdownctx, done := context.WithTimeout(context.Background(), 25*time.Second)
@@ -120,7 +116,8 @@ func (server *Server) Serve() {
 	}
 
 	if err := server.grp.Wait(); err != nil {
-		log.WithFields(errors.LogFields(err)).Fatal("Error starting the server")
+		slog.Error("Error starting the server", "error", errors.LogValue(err))
+		os.Exit(1)
 	}
 }
 
@@ -160,16 +157,13 @@ func newServerPort(s *Server, opts []Option, internal bool) *ServerPort {
 }
 
 func (sp *ServerPort) serve(grp *errgroup.Group) {
-	w := log.WithFields(log.Fields{
-		"stdlib": "http",
-		"port":   sp.port,
-	}).Writer()
-	defer w.Close()
+	w := slog.New(slog.Default().Handler())
+	w = w.With("stdlib", "net/http", "port", sp.port)
 
 	sp.web = &http.Server{
 		Addr:     ":" + sp.port,
 		Handler:  h2c.NewHandler(sp, new(http2.Server)),
-		ErrorLog: stdlog.New(w, "", 0),
+		ErrorLog: slog.NewLogLogger(w.Handler(), slog.LevelError),
 	}
 
 	grp.Go(func() error {
