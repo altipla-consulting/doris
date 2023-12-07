@@ -91,7 +91,7 @@ func (server *Server) Serve() {
 		slog.String("name", env.ServiceName()),
 	}
 	if os.Getenv("SENTRY_DSN") != "" {
-		slog.String("sentry", os.Getenv("SENTRY_DSN"))
+		fields = append(fields, slog.String("sentry", os.Getenv("SENTRY_DSN")))
 	}
 	for i, sp := range server.ports {
 		fields = append(fields, slog.String(fmt.Sprintf("listen.%d", i), sp.port))
