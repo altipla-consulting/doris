@@ -2,14 +2,14 @@ package doris
 
 import (
 	"context"
-	"os"
+	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
-	"github.com/altipla-consulting/sentry"
+	"github.com/altipla-consulting/telemetry"
 	"github.com/bufbuild/connect-go"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -53,33 +53,31 @@ func trimRequestsInterceptor() connect.Interceptor {
 }
 
 func sentryLoggerInterceptor() connect.Interceptor {
-	client := sentry.NewClient(os.Getenv("SENTRY_DSN"))
-
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, in connect.AnyRequest) (connect.AnyResponse, error) {
-			defer client.ReportPanics(ctx)
+			defer telemetry.ReportPanics(ctx)
 
 			reply, err := next(ctx, in)
 			if err != nil {
-				logError(ctx, client, in.Spec().Procedure, err)
+				logError(ctx, in.Spec().Procedure, err)
 			}
 			return reply, err
 		})
 	})
 }
 
-func logError(ctx context.Context, client *sentry.Client, method string, err error) {
+func logError(ctx context.Context, method string, err error) {
 	if env.IsLocal() {
-		log.Println(errors.Stack(err))
+		fmt.Println(errors.Stack(err))
 	}
 
 	if connecterr := new(connect.Error); errors.As(err, &connecterr) {
 		// Always log the Connect errors.
-		log.WithFields(log.Fields{
-			"code":    connecterr.Code().String(),
-			"message": connecterr.Message(),
-			"method":  method,
-		}).Error("Connect call failed")
+		slog.Error("Connect call failed",
+			"code", connecterr.Code().String(),
+			"message", connecterr.Message(),
+			"method", method,
+		)
 
 		// Do not notify those status codes.
 		switch connecterr.Code() {
@@ -87,7 +85,7 @@ func logError(ctx context.Context, client *sentry.Client, method string, err err
 			return
 		}
 	} else {
-		log.WithFields(errors.LogFields(err)).Error("Unknown error in Connect call")
+		slog.Error("Unknown error in Connect call", "error", errors.LogValue(err))
 	}
 
 	// Do not notify disconnections from the client.
@@ -95,5 +93,5 @@ func logError(ctx context.Context, client *sentry.Client, method string, err err
 		return
 	}
 
-	client.Report(ctx, err)
+	telemetry.ReportError(ctx, err)
 }
