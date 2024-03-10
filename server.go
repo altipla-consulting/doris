@@ -123,7 +123,7 @@ func (server *Server) Serve() {
 
 // ServerPort is a child server in a different custom port.
 type ServerPort struct {
-	*routing.Server
+	*Router
 
 	// Configurations from options passed when initializing the port.
 	http     []routing.ServerOption
@@ -149,7 +149,9 @@ func newServerPort(s *Server, opts []Option, internal bool) *ServerPort {
 		opt(s, sp, internal)
 	}
 
-	sp.Server = routing.NewServer(sp.http...)
+	sp.Router = &Router{
+		Server: routing.NewServer(sp.http...),
+	}
 
 	sp.Get("/health", healthHandler)
 
