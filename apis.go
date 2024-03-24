@@ -13,13 +13,13 @@ import (
 
 // ConnectHub helps mounting Connect APIs to their correct endpoints.
 type ConnectHub struct {
-	r            *routing.Router
+	r            *Router
 	cors         []string
 	interceptors []connect.Interceptor
 }
 
 // NewConnectHub creates a new hub prepared to mount Connect APIs.
-func NewConnectHub(r *routing.Router, opts ...ConnectHubOption) *ConnectHub {
+func NewConnectHub(r *Router, opts ...ConnectHubOption) *ConnectHub {
 	hub := &ConnectHub{
 		r:    r,
 		cors: []string{"https://studio.buf.build"},
@@ -57,7 +57,7 @@ func (hub *ConnectHub) Mount(fn MountFn) {
 		}
 		handler = cors.New(cnf).Handler(handler)
 	}
-	hub.r.PathPrefixHandler(pattern, routing.NewHandlerFromHTTP(handler))
+	hub.r.PathPrefixHandlerHTTP(pattern, handler)
 }
 
 func (hub *ConnectHub) opts() []connect.HandlerOption {
