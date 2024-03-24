@@ -14,3 +14,8 @@ type Router struct {
 func (r *Router) PathPrefixHandlerHTTP(path string, handler http.Handler) {
 	r.PathPrefixHandler(path, routing.NewHandlerFromHTTP(handler))
 }
+
+// Handle sends all request to the standard HTTP handler.
+func (r *Router) Handle(handler http.Handler) {
+	r.PathPrefixHandlerHTTP("", handler)
+}

@@ -6,8 +6,8 @@ github.com/altipla-consulting/errors v1.3.0 h1:2R25K0Kv2Xk9ah7OsgZnqy4zTThap+vXy
 github.com/altipla-consulting/errors v1.3.0/go.mod h1:erkrdXdprO2uXG/78YLr1ClQ0I88atRGJLRl480gpQ8=
 github.com/altipla-consulting/sentry v0.4.4 h1:LpO84VQtItlGsUXi6n1QJP4r+qCFEWtWn+jBgyFFZIs=
 github.com/altipla-consulting/sentry v0.4.4/go.mod h1:mvzk8GSCc+huI1cPC+JB0taFQnKope9CLpidU8mXYho=
-github.com/altipla-consulting/telemetry v0.2.1 h1:fx2xL1p+xww2LiA3zvQeklZPn2nx+6kOrcApe/q4nvI=
-github.com/altipla-consulting/telemetry v0.2.1/go.mod h1:ZVFidjxvYBqevHRoUUGUBbwsC71Vj1PoZEYPH6QbCa0=
+github.com/altipla-consulting/telemetry v0.4.1 h1:W93skbc5/ZvgruHSiFQRbZFpfuKHzM4ASeWQYy5b9kY=
+github.com/altipla-consulting/telemetry v0.4.1/go.mod h1:bo27zXsyQqHdWHt77xBg73u5DxTzk3/RWsS6fIe7lng=
 github.com/bufbuild/connect-go v1.9.0 h1:JIgAeNuFpo+SUPfU19Yt5TcWlznsN5Bv10/gI/6Pjoc=
 github.com/bufbuild/connect-go v1.9.0/go.mod h1:CAIePUgkDR5pAFaylSMtNK45ANQjp9JvpluG20rhpV8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

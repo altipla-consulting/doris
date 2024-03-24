@@ -6,7 +6,7 @@ require (
 	github.com/VictoriaMetrics/metrics v1.24.0
 	github.com/altipla-consulting/env v0.2.2
 	github.com/altipla-consulting/errors v1.3.0
-	github.com/altipla-consulting/telemetry v0.2.1
+	github.com/altipla-consulting/telemetry v0.4.1
 	github.com/bufbuild/connect-go v1.9.0
 	github.com/rs/cors v1.9.0
 	github.com/stretchr/testify v1.8.4
