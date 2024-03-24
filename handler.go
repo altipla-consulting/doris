@@ -27,7 +27,7 @@ func Handler(handler HandlerError) http.Handler {
 
 		if err := handler(w, r); err != nil {
 			if errors.Is(ctx.Err(), context.Canceled) {
-				emitError(w, r, http.StatusRequestTimeout)
+				Error(w, http.StatusRequestTimeout)
 				return
 			}
 
@@ -38,7 +38,7 @@ func Handler(handler HandlerError) http.Handler {
 			telemetry.ReportError(r.Context(), err)
 
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				emitError(w, r, http.StatusGatewayTimeout)
+				Error(w, http.StatusGatewayTimeout)
 				return
 			}
 
@@ -48,12 +48,12 @@ func Handler(handler HandlerError) http.Handler {
 				return
 			}
 
-			emitError(w, r, http.StatusInternalServerError)
+			Error(w, http.StatusInternalServerError)
 		}
 	})
 }
 
-func emitError(w http.ResponseWriter, r *http.Request, status int) {
+func Error(w http.ResponseWriter, status int) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 
