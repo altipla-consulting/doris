@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
@@ -19,14 +18,8 @@ func Handler(handler HandlerError) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer telemetry.ReportPanics(r.Context())
 
-		ctx := r.Context()
-		ctx, cancel := context.WithTimeout(ctx, 29*time.Second)
-		defer cancel()
-
-		r = r.WithContext(ctx)
-
 		if err := handler(w, r); err != nil {
-			if errors.Is(ctx.Err(), context.Canceled) {
+			if errors.Is(r.Context().Err(), context.Canceled) {
 				Error(w, http.StatusRequestTimeout)
 				return
 			}
@@ -37,7 +30,7 @@ func Handler(handler HandlerError) http.Handler {
 				slog.String("url", r.URL.String()))
 			telemetry.ReportError(r.Context(), err)
 
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			if errors.Is(r.Context().Err(), context.DeadlineExceeded) {
 				Error(w, http.StatusGatewayTimeout)
 				return
 			}
