@@ -36,7 +36,7 @@ func serverOnlyInterceptor() connect.Interceptor {
 func genericTimeoutInterceptor() connect.Interceptor {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, in connect.AnyRequest) (connect.AnyResponse, error) {
-			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 29*time.Second)
 			defer cancel()
 			return next(ctx, in)
 		})
