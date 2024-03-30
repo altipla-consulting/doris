@@ -137,7 +137,6 @@ type ServerPort struct {
 func newServerPort(s *Server, opts []Option, internal bool) *ServerPort {
 	sp := &ServerPort{
 		http: []routing.ServerOption{
-			routing.WithLogrus(),
 			routing.WithSentry(os.Getenv("SENTRY_DSN")),
 		},
 		port: "8080",
