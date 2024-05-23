@@ -18,6 +18,8 @@ func Handler(handler HandlerError) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer telemetry.ReportPanics(r.Context())
 
+		r = telemetry.WithAdvancedReporterRequest(r)
+
 		if err := handler(w, r); err != nil {
 			if errors.Is(r.Context().Err(), context.Canceled) {
 				Error(w, http.StatusRequestTimeout)
@@ -28,7 +30,7 @@ func Handler(handler HandlerError) http.Handler {
 				slog.String("error", err.Error()),
 				slog.String("details", errors.Details(err)),
 				slog.String("url", r.URL.String()))
-			telemetry.ReportError(r.Context(), err)
+			telemetry.ReportErrorRequest(r, err)
 
 			if errors.Is(r.Context().Err(), context.DeadlineExceeded) {
 				Error(w, http.StatusGatewayTimeout)

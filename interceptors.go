@@ -57,6 +57,8 @@ func sentryLoggerInterceptor() connect.Interceptor {
 		return connect.UnaryFunc(func(ctx context.Context, in connect.AnyRequest) (connect.AnyResponse, error) {
 			defer telemetry.ReportPanics(ctx)
 
+			ctx = telemetry.WithAdvancedReporterContext(ctx)
+
 			reply, err := next(ctx, in)
 			if err != nil {
 				logError(ctx, in.Spec().Procedure, err)

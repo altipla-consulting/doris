@@ -6,7 +6,7 @@ require (
 	github.com/VictoriaMetrics/metrics v1.33.1
 	github.com/altipla-consulting/env v0.2.2
 	github.com/altipla-consulting/errors v1.4.0
-	github.com/altipla-consulting/telemetry v0.5.2
+	github.com/altipla-consulting/telemetry v0.7.0
 	github.com/bufbuild/connect-go v1.10.0
 	github.com/rs/cors v1.10.1
 	github.com/stretchr/testify v1.9.0
@@ -17,7 +17,7 @@ require (
 )
 
 require (
-	github.com/altipla-consulting/sentry v0.4.5 // indirect
+	github.com/altipla-consulting/sentry v0.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
@@ -25,7 +25,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
