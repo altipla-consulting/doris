@@ -8,10 +8,14 @@ github.com/altipla-consulting/sentry v0.4.5 h1:5VY2H7kpTz4KyrfheJGyMIXuJc82EvO3j
 github.com/altipla-consulting/sentry v0.4.5/go.mod h1:JKfzihHOFBSTmoXEbhE+HtmuaLwnMv4c+SrLOJjaRRE=
 github.com/altipla-consulting/sentry v0.5.0 h1:AUngNPdDmN8zf+C5M1lenZbN9rI2GMHviX3AYhvKR0o=
 github.com/altipla-consulting/sentry v0.5.0/go.mod h1:Hqe8hG/i4J4ix+Dt5Kn45jUhFOsk0/nTYEZfL4ajLX4=
+github.com/altipla-consulting/sentry v0.5.1 h1:D7NYyikiAzSMJ8u+jeLKZ73AUkmrtA9II3y+oRqOC/0=
+github.com/altipla-consulting/sentry v0.5.1/go.mod h1:Hqe8hG/i4J4ix+Dt5Kn45jUhFOsk0/nTYEZfL4ajLX4=
 github.com/altipla-consulting/telemetry v0.5.2 h1:RokznBrjUZQp+RC5plQ6gSSnkXV1M2VKv4Cdf9LrGS8=
 github.com/altipla-consulting/telemetry v0.5.2/go.mod h1:T7C7MjAszVvTFoTVApMTT2p+Q3h1q9qdfCPDw7XXKIk=
 github.com/altipla-consulting/telemetry v0.7.0 h1:IYtA58bZKr17w/NycQHQ+s6aUhYWiNAuu5kafPgFGJU=
 github.com/altipla-consulting/telemetry v0.7.0/go.mod h1:MA7qqOKCUqnJ8ifeN/JcfQp/B7omT4pPRwVLM6u2tk8=
+github.com/altipla-consulting/telemetry v0.7.1 h1:R8KV+OjoP7AJ4SOdF+yXBCY5h/+o80GZfMcJhbGPlT4=
+github.com/altipla-consulting/telemetry v0.7.1/go.mod h1:OJsZPt763CAyK3sy/ObcGvYC/LT0bkNzGrgwEubH8NM=
 github.com/bufbuild/connect-go v1.10.0 h1:QAJ3G9A1OYQW2Jbk3DeoJbkCxuKArrvZgDt47mjdTbg=
 github.com/bufbuild/connect-go v1.10.0/go.mod h1:CAIePUgkDR5pAFaylSMtNK45ANQjp9JvpluG20rhpV8=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
