@@ -3,14 +3,14 @@ module github.com/altipla-consulting/doris
 go 1.21.4
 
 require (
+	connectrpc.com/connect v1.16.2
 	github.com/VictoriaMetrics/metrics v1.33.1
 	github.com/altipla-consulting/env v0.2.2
 	github.com/altipla-consulting/errors v1.4.0
 	github.com/altipla-consulting/telemetry v0.7.1
-	github.com/bufbuild/connect-go v1.10.0
 	github.com/rs/cors v1.10.1
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/net v0.22.0
+	golang.org/x/net v0.23.0
 	golang.org/x/sync v0.6.0
 	google.golang.org/protobuf v1.33.0
 	libs.altipla.consulting v1.186.0

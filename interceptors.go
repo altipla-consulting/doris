@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
 	"github.com/altipla-consulting/telemetry"
-	"github.com/bufbuild/connect-go"
 	"google.golang.org/protobuf/proto"
 )
 

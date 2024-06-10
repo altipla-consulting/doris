@@ -1,8 +1,8 @@
 package doris
 
 import (
+	"connectrpc.com/connect"
 	"github.com/altipla-consulting/errors"
-	"github.com/bufbuild/connect-go"
 )
 
 func Errorf(code connect.Code, msg string, args ...any) error {
