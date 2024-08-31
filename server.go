@@ -141,6 +141,9 @@ func newServerPort(s *Server, opts []Option, internal bool) *ServerPort {
 		},
 		port: "8080",
 	}
+	if p := os.Getenv("PORT"); p != "" {
+		sp.port = p
+	}
 	if internal {
 		sp.port = "8000"
 	}
