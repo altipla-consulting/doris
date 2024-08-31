@@ -42,12 +42,16 @@ func NewServer(opts ...Option) *Server {
 	}
 	server.ServerPort = newServerPort(server, opts, false)
 
-	// Register an internal port for health checks and metrics.
-	// It should be first to shutdown it first too and disconnect live connections
-	// as soon as possible when restarting the app.
-	internal := newServerPort(server, opts, true)
-	internal.Get("/metrics", metricsHandler)
-	server.ports = append(server.ports, internal)
+	if env.IsLocal() {
+		server.Get("/metrics", metricsHandler)
+	} else {
+		// Register an internal port for health checks and metrics.
+		// It should be first to shutdown it first too and disconnect live connections
+		// as soon as possible when restarting the app.
+		internal := newServerPort(server, opts, true)
+		internal.Get("/metrics", metricsHandler)
+		server.ports = append(server.ports, internal)
+	}
 
 	// Register the first default port of the server.
 	server.ports = append(server.ports, server.ServerPort)
