@@ -63,6 +63,11 @@ func sentryLoggerInterceptor() connect.Interceptor {
 			if err != nil {
 				logError(ctx, in.Spec().Procedure, err)
 			}
+
+			if connect.IsWireError(err) {
+				return reply, connect.NewError(connect.CodeInternal, err)
+			}
+
 			return reply, err
 		})
 	})
