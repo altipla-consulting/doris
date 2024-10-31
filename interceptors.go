@@ -4,12 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
+	"github.com/altipla-consulting/sentry"
 	"github.com/altipla-consulting/telemetry"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -57,7 +61,17 @@ func sentryLoggerInterceptor() connect.Interceptor {
 		return connect.UnaryFunc(func(ctx context.Context, in connect.AnyRequest) (connect.AnyResponse, error) {
 			defer telemetry.ReportPanics(ctx)
 
-			ctx = telemetry.WithAdvancedReporterContext(ctx)
+			// Build a simulated request for Sentry reports.
+			body := strings.NewReader(protojson.Format(in.Any().(proto.Message)))
+			r, err := http.NewRequestWithContext(ctx, in.HTTPMethod(), in.Spec().Procedure, body)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+			for k, v := range in.Header() {
+				r.Header[k] = v
+			}
+			r = sentry.WithRequest(r)
+			ctx = r.Context()
 
 			reply, err := next(ctx, in)
 			if err != nil {
