@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -63,10 +64,16 @@ func sentryLoggerInterceptor() connect.Interceptor {
 
 			// Build a simulated request for Sentry reports.
 			body := strings.NewReader(protojson.Format(in.Any().(proto.Message)))
-			r, err := http.NewRequestWithContext(ctx, in.HTTPMethod(), in.Spec().Procedure, body)
+			u := url.URL{
+				Scheme: "https",
+				Host:   in.Header().Get("host"),
+				Path:   in.Spec().Procedure,
+			}
+			r, err := http.NewRequestWithContext(ctx, in.HTTPMethod(), u.String(), body)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInternal, err)
 			}
+			r.RemoteAddr = in.Peer().Addr
 			for k, v := range in.Header() {
 				r.Header[k] = v
 			}

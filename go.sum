@@ -8,6 +8,8 @@ github.com/altipla-consulting/errors v1.5.0 h1:gA2gjdqFqXm2SHelVNKnKLQQInmgXuDTI
 github.com/altipla-consulting/errors v1.5.0/go.mod h1:x2/+JzMSga6sEUe8FNKIwWRshteAnNJo2WY81m3US6o=
 github.com/altipla-consulting/sentry v0.6.0 h1:ibX2Y/TTyhSCafnj9b6ZGS7SpVK5sups5A+zHnQLP/8=
 github.com/altipla-consulting/sentry v0.6.0/go.mod h1:KZkof/Xq3wBKvqvx22FgdSQUvkCJ11rv/08Mw771Frs=
+github.com/altipla-consulting/sentry v0.6.1 h1:F18ckh869g10tyXNbi366956AxiGkS5DPTyuHZto8qQ=
+github.com/altipla-consulting/sentry v0.6.1/go.mod h1:KZkof/Xq3wBKvqvx22FgdSQUvkCJ11rv/08Mw771Frs=
 github.com/altipla-consulting/telemetry v0.8.1 h1:LDP1fsnuiAU6ru9nryxOlJusU7FIFQw/p9Z0fmMCILM=
 github.com/altipla-consulting/telemetry v0.8.1/go.mod h1:P23y56pmWKAU5B4yFW9sW+qlrFjLaxsLboBmEsrEyow=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
