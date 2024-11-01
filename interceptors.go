@@ -3,6 +3,7 @@ package doris
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -63,12 +64,12 @@ func sentryLoggerInterceptor() connect.Interceptor {
 			defer telemetry.ReportPanics(ctx)
 
 			// Build a simulated request for Sentry reports.
-			body := strings.NewReader(protojson.Format(in.Any().(proto.Message)))
 			u := url.URL{
 				Scheme: "https",
 				Host:   in.Header().Get("host"),
 				Path:   in.Spec().Procedure,
 			}
+			body := strings.NewReader(protojson.Format(in.Any().(proto.Message)))
 			r, err := http.NewRequestWithContext(ctx, in.HTTPMethod(), u.String(), body)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInternal, err)
@@ -77,11 +78,13 @@ func sentryLoggerInterceptor() connect.Interceptor {
 			for k, v := range in.Header() {
 				r.Header[k] = v
 			}
-			r = sentry.WithRequest(r)
-			ctx = r.Context()
+			ctx = sentry.WithRequest(r).Context()
 
 			reply, err := next(ctx, in)
 			if err != nil {
+				if _, err := io.Copy(io.Discard, r.Body); err != nil {
+					return nil, fmt.Errorf("doris: cannot read simulated task request body: %w", err)
+				}
 				logError(ctx, in.Spec().Procedure, err)
 			}
 
