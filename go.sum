@@ -6,6 +6,8 @@ github.com/altipla-consulting/env v0.2.2 h1:EbBAe5tMYNaOVhiVzRxNL39u7hKaerSBhF+l
 github.com/altipla-consulting/env v0.2.2/go.mod h1:0wGCiA8OUISdQbBVS5bBeJAteFThsVuQAgDIZUYDFiA=
 github.com/altipla-consulting/errors v1.5.0 h1:gA2gjdqFqXm2SHelVNKnKLQQInmgXuDTIxCQ2DgVHS8=
 github.com/altipla-consulting/errors v1.5.0/go.mod h1:x2/+JzMSga6sEUe8FNKIwWRshteAnNJo2WY81m3US6o=
+github.com/altipla-consulting/errors v1.5.1 h1:uhKRXFxuAhTYYrE2p2P9jpiCJbBvLv4cKBVN1uH9hZY=
+github.com/altipla-consulting/errors v1.5.1/go.mod h1:x2/+JzMSga6sEUe8FNKIwWRshteAnNJo2WY81m3US6o=
 github.com/altipla-consulting/sentry v0.6.0 h1:ibX2Y/TTyhSCafnj9b6ZGS7SpVK5sups5A+zHnQLP/8=
 github.com/altipla-consulting/sentry v0.6.0/go.mod h1:KZkof/Xq3wBKvqvx22FgdSQUvkCJ11rv/08Mw771Frs=
 github.com/altipla-consulting/sentry v0.6.1 h1:F18ckh869g10tyXNbi366956AxiGkS5DPTyuHZto8qQ=

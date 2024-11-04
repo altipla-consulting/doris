@@ -6,7 +6,7 @@ require (
 	connectrpc.com/connect v1.16.2
 	github.com/VictoriaMetrics/metrics v1.33.1
 	github.com/altipla-consulting/env v0.2.2
-	github.com/altipla-consulting/errors v1.5.0
+	github.com/altipla-consulting/errors v1.5.1
 	github.com/altipla-consulting/sentry v0.6.1
 	github.com/altipla-consulting/telemetry v0.8.1
 	github.com/rs/cors v1.10.1
