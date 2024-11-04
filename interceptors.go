@@ -61,8 +61,6 @@ func trimRequestsInterceptor() connect.Interceptor {
 func sentryLoggerInterceptor() connect.Interceptor {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, in connect.AnyRequest) (connect.AnyResponse, error) {
-			defer telemetry.ReportPanics(ctx)
-
 			// Build a simulated request for Sentry reports.
 			u := url.URL{
 				Scheme: "https",
@@ -80,7 +78,7 @@ func sentryLoggerInterceptor() connect.Interceptor {
 			}
 			ctx = sentry.WithRequest(r).Context()
 
-			reply, err := next(ctx, in)
+			reply, err := callProcedure(next, ctx, in)
 			if err != nil {
 				if _, err := io.Copy(io.Discard, r.Body); err != nil {
 					return nil, fmt.Errorf("doris: cannot read simulated task request body: %w", err)
@@ -95,6 +93,15 @@ func sentryLoggerInterceptor() connect.Interceptor {
 			return reply, err
 		})
 	})
+}
+
+func callProcedure(next connect.UnaryFunc, ctx context.Context, in connect.AnyRequest) (reply connect.AnyResponse, reterr error) {
+	defer func() {
+		if err := errors.Recover(recover()); err != nil {
+			reterr = err
+		}
+	}()
+	return next(ctx, in)
 }
 
 func logError(ctx context.Context, method string, err error) {
