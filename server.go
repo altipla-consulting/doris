@@ -13,6 +13,7 @@ import (
 
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
+	"github.com/altipla-consulting/telemetry/logging"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
@@ -120,8 +121,7 @@ func (server *Server) Serve() {
 	}
 
 	if err := server.grp.Wait(); err != nil {
-		slog.Error("Error starting the server", "error", errors.LogValue(err))
-		os.Exit(1)
+		logging.Fatal("Error starting the server", err)
 	}
 }
 
