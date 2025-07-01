@@ -71,7 +71,7 @@ func (server *Server) Context() context.Context {
 func (server *Server) GoBackground(fn func(ctx context.Context) error) {
 	server.grp.Go(func() error {
 		if err := fn(server.ctx); err != nil {
-			return fmt.Errorf("background task failed: %w", err)
+			return errors.Errorf("background task failed: %w", err)
 		}
 		return nil
 	})
