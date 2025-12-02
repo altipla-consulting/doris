@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
 	"github.com/altipla-consulting/sentry"
 	"github.com/altipla-consulting/telemetry"
@@ -90,7 +89,11 @@ func sentryLoggerInterceptor() connect.Interceptor {
 				return reply, connect.NewError(connect.CodeInternal, err)
 			}
 
-			return reply, err
+			if connecterr := new(connect.Error); errors.As(err, &connecterr) && connecterr.Code() != connect.CodeUnknown {
+				return reply, err
+			}
+
+			return reply, Errorf(connect.CodeInternal, "internal server error")
 		})
 	})
 }
@@ -105,10 +108,6 @@ func callProcedure(next connect.UnaryFunc, ctx context.Context, in connect.AnyRe
 }
 
 func logError(ctx context.Context, method string, err error) {
-	if env.IsLocal() {
-		fmt.Println(errors.Stack(err))
-	}
-
 	if connecterr := new(connect.Error); errors.As(err, &connecterr) {
 		// Always log the Connect errors.
 		slog.Error("Connect call failed",

@@ -27,7 +27,8 @@ type Server struct {
 	cancel context.CancelFunc
 	grp    *errgroup.Group
 
-	ports []*ServerPort
+	ports      []*ServerPort
+	shutdownCh chan struct{}
 }
 
 // NewServer creates a new root server in the default port. It won't start until
@@ -37,9 +38,10 @@ func NewServer(opts ...Option) *Server {
 	grp, ctx := errgroup.WithContext(ctx)
 
 	server := &Server{
-		ctx:    ctx,
-		cancel: cancel,
-		grp:    grp,
+		ctx:        ctx,
+		cancel:     cancel,
+		grp:        grp,
+		shutdownCh: make(chan struct{}),
 	}
 	server.ServerPort = newServerPort(server, opts, false)
 
@@ -109,6 +111,7 @@ func (server *Server) Serve() {
 	select {
 	case <-signalctx.Done():
 	case <-server.ctx.Done():
+	case <-server.shutdownCh:
 	}
 
 	slog.Info("Shutting down")
@@ -122,6 +125,14 @@ func (server *Server) Serve() {
 
 	if err := server.grp.Wait(); err != nil {
 		logging.Fatal("Error starting the server", err)
+	}
+}
+
+// Close gracefully shuts down the server using the same procedure as when receiving a close signal.
+func (server *Server) Close() {
+	select {
+	case server.shutdownCh <- struct{}{}:
+	default:
 	}
 }
 
