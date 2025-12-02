@@ -11,10 +11,15 @@ import (
 	"connectrpc.com/connect"
 	"github.com/altipla-consulting/connecttest"
 	"github.com/altipla-consulting/doris"
+	"github.com/altipla-consulting/errors"
 	"github.com/altipla-consulting/telemetry"
 	"github.com/altipla-consulting/telemetry/logging"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	telemetry.Configure(logging.Debug())
+}
 
 type successServer struct {
 	healthv1connect.UnimplementedHealthHandler
@@ -54,15 +59,12 @@ func (server *panicServer) Check(context.Context, *connect.Request[healthv1.Heal
 }
 
 func TestServicePanic(t *testing.T) {
-	telemetry.Configure(logging.Debug())
 
 	r := doris.NewServer(doris.WithPort("25000"))
-
 	hub := doris.NewConnectHub(r.Router)
 	hub.Mount(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return healthv1connect.NewHealthHandler(&panicServer{}, opts...)
 	})
-
 	go r.Serve()
 
 	time.Sleep(1 * time.Second)
@@ -71,6 +73,55 @@ func TestServicePanic(t *testing.T) {
 	require.Error(t, err)
 
 	connecttest.RequireError(t, err, connect.CodeInternal, "internal server error")
+
+	r.Close()
+}
+
+type errorServer struct {
+	healthv1connect.UnimplementedHealthHandler
+	err error
+}
+
+func (server *errorServer) Check(context.Context, *connect.Request[healthv1.HealthCheckRequest]) (*connect.Response[healthv1.HealthCheckResponse], error) {
+	return nil, errors.Trace(server.err)
+}
+
+func TestServiceInternalError(t *testing.T) {
+	r := doris.NewServer(doris.WithPort("25000"))
+	hub := doris.NewConnectHub(r.Router)
+	hub.Mount(func(opts ...connect.HandlerOption) (string, http.Handler) {
+		return healthv1connect.NewHealthHandler(&errorServer{
+			err: errors.New("health check example error"),
+		}, opts...)
+	})
+	go r.Serve()
+
+	time.Sleep(1 * time.Second)
+	client := healthv1connect.NewHealthClient(http.DefaultClient, "http://localhost:25000")
+	_, err := client.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
+	require.Error(t, err)
+
+	connecttest.RequireError(t, err, connect.CodeInternal, "internal server error")
+
+	r.Close()
+}
+
+func TestServiceKnownConnectError(t *testing.T) {
+	r := doris.NewServer(doris.WithPort("25000"))
+	hub := doris.NewConnectHub(r.Router)
+	hub.Mount(func(opts ...connect.HandlerOption) (string, http.Handler) {
+		return healthv1connect.NewHealthHandler(&errorServer{
+			err: doris.Errorf(connect.CodeNotFound, "health check example error"),
+		}, opts...)
+	})
+	go r.Serve()
+
+	time.Sleep(1 * time.Second)
+	client := healthv1connect.NewHealthClient(http.DefaultClient, "http://localhost:25000")
+	_, err := client.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
+	require.Error(t, err)
+
+	connecttest.RequireError(t, err, connect.CodeNotFound, "health check example error")
 
 	r.Close()
 }
