@@ -83,17 +83,18 @@ func sentryLoggerInterceptor() connect.Interceptor {
 					return nil, fmt.Errorf("doris: cannot read simulated task request body: %w", err)
 				}
 				logError(ctx, in.Spec().Procedure, err)
+
+				if connect.IsWireError(err) {
+					return reply, connect.NewError(connect.CodeInternal, err)
+				}
+				if connecterr := new(connect.Error); errors.As(err, &connecterr) && connecterr.Code() != connect.CodeUnknown {
+					return reply, err
+				}
+
+				return reply, Errorf(connect.CodeInternal, "internal server error")
 			}
 
-			if connect.IsWireError(err) {
-				return reply, connect.NewError(connect.CodeInternal, err)
-			}
-
-			if connecterr := new(connect.Error); errors.As(err, &connecterr) && connecterr.Code() != connect.CodeUnknown {
-				return reply, err
-			}
-
-			return reply, Errorf(connect.CodeInternal, "internal server error")
+			return reply, nil
 		})
 	})
 }
