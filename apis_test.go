@@ -10,11 +10,12 @@ import (
 	healthv1 "buf.build/gen/go/grpc/grpc/protocolbuffers/go/grpc/health/v1"
 	"connectrpc.com/connect"
 	"github.com/altipla-consulting/connecttest"
-	"github.com/altipla-consulting/doris"
 	"github.com/altipla-consulting/errors"
 	"github.com/altipla-consulting/telemetry"
 	"github.com/altipla-consulting/telemetry/logging"
 	"github.com/stretchr/testify/require"
+
+	"github.com/altipla-consulting/doris"
 )
 
 func init() {
@@ -36,14 +37,14 @@ func TestMount(t *testing.T) {
 
 	hub := doris.NewConnectHub(r.Router)
 	hub.Mount(func(opts ...connect.HandlerOption) (string, http.Handler) {
-		return healthv1connect.NewHealthHandler(&successServer{}, opts...)
+		return healthv1connect.NewHealthHandler(new(successServer), opts...)
 	})
 
 	go r.Serve()
 
 	time.Sleep(1 * time.Second)
 	client := healthv1connect.NewHealthClient(http.DefaultClient, "http://localhost:25000")
-	status, err := client.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
+	status, err := client.Check(context.Background(), connect.NewRequest(new(healthv1.HealthCheckRequest)))
 	require.NoError(t, err)
 	require.Equal(t, healthv1.HealthCheckResponse_SERVING, status.Msg.Status)
 
@@ -63,13 +64,13 @@ func TestServicePanic(t *testing.T) {
 	r := doris.NewServer(doris.WithPort("25000"))
 	hub := doris.NewConnectHub(r.Router)
 	hub.Mount(func(opts ...connect.HandlerOption) (string, http.Handler) {
-		return healthv1connect.NewHealthHandler(&panicServer{}, opts...)
+		return healthv1connect.NewHealthHandler(new(panicServer), opts...)
 	})
 	go r.Serve()
 
 	time.Sleep(1 * time.Second)
 	client := healthv1connect.NewHealthClient(http.DefaultClient, "http://localhost:25000")
-	_, err := client.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
+	_, err := client.Check(context.Background(), connect.NewRequest(new(healthv1.HealthCheckRequest)))
 	require.Error(t, err)
 
 	connecttest.RequireError(t, err, connect.CodeInternal, "internal server error")
@@ -98,7 +99,7 @@ func TestServiceInternalError(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 	client := healthv1connect.NewHealthClient(http.DefaultClient, "http://localhost:25000")
-	_, err := client.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
+	_, err := client.Check(context.Background(), connect.NewRequest(new(healthv1.HealthCheckRequest)))
 	require.Error(t, err)
 
 	connecttest.RequireError(t, err, connect.CodeInternal, "internal server error")
@@ -118,7 +119,7 @@ func TestServiceKnownConnectError(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 	client := healthv1connect.NewHealthClient(http.DefaultClient, "http://localhost:25000")
-	_, err := client.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
+	_, err := client.Check(context.Background(), connect.NewRequest(new(healthv1.HealthCheckRequest)))
 	require.Error(t, err)
 
 	connecttest.RequireError(t, err, connect.CodeNotFound, "health check example error")

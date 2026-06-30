@@ -133,3 +133,14 @@ func logError(ctx context.Context, method string, err error) {
 
 	telemetry.ReportError(ctx, err)
 }
+
+func BearerInterceptor(token string) connect.Interceptor {
+	return connect.UnaryInterceptorFunc(
+		func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+				return next(ctx, req)
+			}
+		},
+	)
+}
