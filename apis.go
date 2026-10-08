@@ -3,11 +3,11 @@ package doris
 import (
 	"net/http"
 
-	"connectrpc.com/connect"
-	"github.com/altipla-consulting/errors"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/connect/v2/connectproto"
 	"github.com/rs/cors"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 	"libs.altipla.consulting/routing"
 )
 
@@ -15,7 +15,7 @@ import (
 type ConnectHub struct {
 	r            *Router
 	cors         []string
-	interceptors []connect.Interceptor
+	interceptors []connect.ServerInterceptor
 }
 
 // NewConnectHub creates a new hub prepared to mount Connect APIs.
@@ -30,13 +30,16 @@ func NewConnectHub(r *Router, opts ...ConnectHubOption) *ConnectHub {
 	return hub
 }
 
-// MountFn should be implemented by a global function in the API package to
-// register itself.
-type MountFn func(opts ...connect.HandlerOption) (string, http.Handler)
+// MountFn registers one or more Connect services on a server.
+type MountFn func(server *connect.Server)
 
 // Mount a new API.
 func (hub *ConnectHub) Mount(fn MountFn) {
-	pattern, handler := fn(hub.opts()...)
+	interceptors := append(ServerInterceptors(), hub.interceptors...)
+	server := connect.NewServer(interceptors...)
+	fn(server)
+
+	var wrap func(http.Handler) http.Handler
 	if len(hub.cors) > 0 {
 		cnf := cors.Options{
 			AllowedOrigins: hub.cors,
@@ -55,17 +58,32 @@ func (hub *ConnectHub) Mount(fn MountFn) {
 			},
 			MaxAge: 300,
 		}
-		handler = cors.New(cnf).Handler(handler)
+		c := cors.New(cnf)
+		wrap = c.Handler
 	}
-	hub.r.PathPrefixHandlerHTTP(pattern, handler)
+
+	jsonCodec := connectproto.NewJSONCodec()
+	jsonCodec.MarshalOptions = protojson.MarshalOptions{
+		EmitUnpopulated: true,
+		Resolver:        jsonCodec.MarshalOptions.Resolver,
+	}
+
+	connecthttp.Mount(&routerAdapter{hub: hub, wrap: wrap}, server,
+		connecthttp.WithCodecs(connectproto.NewBinaryCodec(), jsonCodec),
+		connecthttp.WithReadMaxBytes(0),
+	)
 }
 
-func (hub *ConnectHub) opts() []connect.HandlerOption {
-	return []connect.HandlerOption{
-		connect.WithInterceptors(ServerInterceptors()...),
-		connect.WithInterceptors(hub.interceptors...),
-		connect.WithCodec(new(codecJSON)),
+type routerAdapter struct {
+	hub  *ConnectHub
+	wrap func(http.Handler) http.Handler
+}
+
+func (a *routerAdapter) Handle(pattern string, handler http.Handler) {
+	if a.wrap != nil {
+		handler = a.wrap(handler)
 	}
+	a.hub.r.PathPrefixHandlerHTTP(pattern, handler)
 }
 
 // ConnectHubOption configures the Connect hub.
@@ -80,7 +98,7 @@ func WithCORS(domains ...string) ConnectHubOption {
 }
 
 // WithInterceptors configures the interceptors to configure in the APIs.
-func WithInterceptors(interceptors ...connect.Interceptor) ConnectHubOption {
+func WithInterceptors(interceptors ...connect.ServerInterceptor) ConnectHubOption {
 	return func(cnf *ConnectHub) {
 		cnf.interceptors = append(cnf.interceptors, interceptors...)
 	}
@@ -106,31 +124,6 @@ func ConnectCORS(origins []string) cors.Options {
 }
 
 // Deprecated: Use NewConnectHub instead.
-func ConnectOptions(interceptors ...connect.Interceptor) []connect.HandlerOption {
-	return []connect.HandlerOption{}
-}
-
-type codecJSON struct{}
-
-func (c *codecJSON) Name() string {
-	return "json"
-}
-
-func (c *codecJSON) Marshal(message any) ([]byte, error) {
-	msg, ok := message.(proto.Message)
-	if !ok {
-		return nil, errors.Errorf("%T doesn't implement proto.Message", message)
-	}
-	m := protojson.MarshalOptions{
-		EmitUnpopulated: true,
-	}
-	return m.Marshal(msg)
-}
-
-func (c *codecJSON) Unmarshal(binary []byte, message any) error {
-	msg, ok := message.(proto.Message)
-	if !ok {
-		return errors.Errorf("%T doesn't implement proto.Message", message)
-	}
-	return protojson.Unmarshal(binary, msg)
+func ConnectOptions(interceptors ...connect.ServerInterceptor) []connect.ServerInterceptor {
+	return nil
 }
