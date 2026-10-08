@@ -101,7 +101,7 @@ func sentryLoggerInterceptor() connect.ServerInterceptor {
 					}
 				}
 
-				return Errorf(connect.CodeInternal, "internal server error")
+				return connect.Errorf(connect.CodeInternal, "internal server error")
 			}
 
 			return nil

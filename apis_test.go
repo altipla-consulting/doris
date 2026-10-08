@@ -111,7 +111,7 @@ func TestServiceKnownConnectError(t *testing.T) {
 	hub := doris.NewConnectHub(r.Router)
 	hub.Mount(func(s *connect.Server) {
 		grpchealth.Register(s, errorChecker{
-			err: doris.Errorf(connect.CodeNotFound, "health check example error"),
+			err: connect.Errorf(connect.CodeNotFound, "health check example error"),
 		})
 	})
 	go r.Serve()
