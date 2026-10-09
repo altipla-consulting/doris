@@ -30,15 +30,9 @@ func requireConnectError(t *testing.T, err error, code connect.Code, message str
 	require.Equal(t, message, connecterr.Message())
 }
 
-func newHealthClient(baseURL string) *grpchealth.Client {
-	return grpchealth.NewClient(connect.NewClient(
-		connecthttp.NewTransport(http.DefaultClient, baseURL),
-	))
-}
+type successServer struct{}
 
-type successChecker struct{}
-
-func (successChecker) Check(context.Context, *grpchealth.CheckRequest) (*grpchealth.CheckResponse, error) {
+func (successServer) Check(context.Context, *grpchealth.CheckRequest) (*grpchealth.CheckResponse, error) {
 	return &grpchealth.CheckResponse{Status: grpchealth.StatusServing}, nil
 }
 
@@ -47,14 +41,14 @@ func TestMount(t *testing.T) {
 
 	hub := doris.NewConnectHub(r.Router)
 	hub.Mount(func(s *connect.Server) {
-		grpchealth.Register(s, successChecker{})
+		grpchealth.Register(s, successServer{})
 	})
 
 	go r.Serve()
 	t.Cleanup(r.Close)
 
 	time.Sleep(1 * time.Second)
-	client := newHealthClient("http://localhost:25000")
+	client := grpchealth.NewClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, "http://localhost:25000")))
 	status, err := client.Check(context.Background(), new(grpchealth.CheckRequest))
 	require.NoError(t, err)
 	require.Equal(t, grpchealth.StatusServing, status.Status)
@@ -67,7 +61,7 @@ func (panicChecker) Check(context.Context, *grpchealth.CheckRequest) (*grpchealt
 }
 
 func TestServicePanic(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25001"))
+	r := doris.NewServer(doris.WithPort("25000"))
 	hub := doris.NewConnectHub(r.Router)
 	hub.Mount(func(s *connect.Server) {
 		grpchealth.Register(s, panicChecker{})
@@ -76,7 +70,7 @@ func TestServicePanic(t *testing.T) {
 	t.Cleanup(r.Close)
 
 	time.Sleep(1 * time.Second)
-	client := newHealthClient("http://localhost:25001")
+	client := grpchealth.NewClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, "http://localhost:25000")))
 	_, err := client.Check(context.Background(), new(grpchealth.CheckRequest))
 	requireConnectError(t, err, connect.CodeInternal, "internal server error")
 }
@@ -90,7 +84,7 @@ func (c errorChecker) Check(context.Context, *grpchealth.CheckRequest) (*grpchea
 }
 
 func TestServiceInternalError(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25002"))
+	r := doris.NewServer(doris.WithPort("25000"))
 	hub := doris.NewConnectHub(r.Router)
 	hub.Mount(func(s *connect.Server) {
 		grpchealth.Register(s, errorChecker{
@@ -101,13 +95,13 @@ func TestServiceInternalError(t *testing.T) {
 	t.Cleanup(r.Close)
 
 	time.Sleep(1 * time.Second)
-	client := newHealthClient("http://localhost:25002")
+	client := grpchealth.NewClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, "http://localhost:25000")))
 	_, err := client.Check(context.Background(), new(grpchealth.CheckRequest))
 	requireConnectError(t, err, connect.CodeInternal, "internal server error")
 }
 
 func TestServiceKnownConnectError(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25003"))
+	r := doris.NewServer(doris.WithPort("25000"))
 	hub := doris.NewConnectHub(r.Router)
 	hub.Mount(func(s *connect.Server) {
 		grpchealth.Register(s, errorChecker{
@@ -118,7 +112,26 @@ func TestServiceKnownConnectError(t *testing.T) {
 	t.Cleanup(r.Close)
 
 	time.Sleep(1 * time.Second)
-	client := newHealthClient("http://localhost:25003")
+	client := grpchealth.NewClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, "http://localhost:25000")))
 	_, err := client.Check(context.Background(), new(grpchealth.CheckRequest))
 	requireConnectError(t, err, connect.CodeNotFound, "health check example error")
+}
+
+func TestWithInterceptors(t *testing.T) {
+	r := doris.NewServer(doris.WithPort("25000"))
+	hub := doris.NewConnectHub(r.Router)
+	hub.Mount(func(s *connect.Server) {
+		grpchealth.Register(s, successServer{})
+	}, doris.WithInterceptors(func(next connect.ServerFunc) connect.ServerFunc {
+		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
+			return connect.NewError(connect.CodeUnauthenticated, "missing credentials")
+		}
+	}))
+	go r.Serve()
+	t.Cleanup(r.Close)
+
+	time.Sleep(1 * time.Second)
+	client := grpchealth.NewClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, "http://localhost:25000")))
+	_, err := client.Check(context.Background(), new(grpchealth.CheckRequest))
+	requireConnectError(t, err, connect.CodeUnauthenticated, "missing credentials")
 }

@@ -7,7 +7,6 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 	"connectrpc.com/connect/v2/connectproto"
 	"github.com/rs/cors"
-	"google.golang.org/protobuf/encoding/protojson"
 	"libs.altipla.consulting/routing"
 )
 
@@ -33,9 +32,30 @@ func NewConnectHub(r *Router, opts ...ConnectHubOption) *ConnectHub {
 // MountFn registers one or more Connect services on a server.
 type MountFn func(server *connect.Server)
 
+// MountOption configures a single Mount call.
+type MountOption func(cnf *mountConfig)
+
+type mountConfig struct {
+	interceptors []connect.ServerInterceptor
+}
+
+// WithInterceptors adds server interceptors for this Mount only.
+// They run after the hub interceptors from WithInterceptors.
+func WithInterceptors(interceptors ...connect.ServerInterceptor) MountOption {
+	return func(cnf *mountConfig) {
+		cnf.interceptors = append(cnf.interceptors, interceptors...)
+	}
+}
+
 // Mount a new API.
-func (hub *ConnectHub) Mount(fn MountFn) {
+func (hub *ConnectHub) Mount(fn MountFn, opts ...MountOption) {
+	cnf := new(mountConfig)
+	for _, opt := range opts {
+		opt(cnf)
+	}
+
 	interceptors := append(ServerInterceptors(), hub.interceptors...)
+	interceptors = append(interceptors, cnf.interceptors...)
 	server := connect.NewServer(interceptors...)
 	fn(server)
 
@@ -63,10 +83,7 @@ func (hub *ConnectHub) Mount(fn MountFn) {
 	}
 
 	jsonCodec := connectproto.NewJSONCodec()
-	jsonCodec.MarshalOptions = protojson.MarshalOptions{
-		EmitUnpopulated: true,
-		Resolver:        jsonCodec.MarshalOptions.Resolver,
-	}
+	jsonCodec.MarshalOptions.EmitUnpopulated = true
 
 	connecthttp.Mount(&routerAdapter{hub: hub, wrap: wrap}, server,
 		connecthttp.WithCodecs(connectproto.NewBinaryCodec(), jsonCodec),
@@ -94,13 +111,6 @@ type ConnectHubOption func(cnf *ConnectHub)
 func WithCORS(domains ...string) ConnectHubOption {
 	return func(cnf *ConnectHub) {
 		cnf.cors = append(cnf.cors, domains...)
-	}
-}
-
-// WithInterceptors configures the interceptors to configure in the APIs.
-func WithInterceptors(interceptors ...connect.ServerInterceptor) ConnectHubOption {
-	return func(cnf *ConnectHub) {
-		cnf.interceptors = append(cnf.interceptors, interceptors...)
 	}
 }
 
