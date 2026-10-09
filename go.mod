@@ -1,11 +1,10 @@
 module github.com/altipla-consulting/doris
 
-go 1.24.0
+go 1.26.0
 
 require (
-	buf.build/gen/go/grpc/grpc/connectrpc/go v1.19.1-20250429200738-0ee95b84c2c7.2
-	buf.build/gen/go/grpc/grpc/protocolbuffers/go v1.36.10-20250429200738-0ee95b84c2c7.1
-	connectrpc.com/connect v1.19.1
+	connectrpc.com/connect/v2 v2.0.0
+	connectrpc.com/grpchealth/v2 v2.0.0
 	github.com/VictoriaMetrics/metrics v1.40.2
 	github.com/altipla-consulting/env v0.3.0
 	github.com/altipla-consulting/errors v1.5.1
@@ -15,12 +14,11 @@ require (
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/net v0.47.0
 	golang.org/x/sync v0.18.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	libs.altipla.consulting v1.186.1
 )
 
 require (
-	github.com/altipla-consulting/connecttest v0.1.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/getsentry/sentry-go v0.40.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
