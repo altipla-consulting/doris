@@ -38,7 +38,7 @@ func (hub *ConnectHub) Mount(fn MountFn, interceptors ...connect.ServerIntercept
 	server := connect.NewServer(append(ServerInterceptors(), interceptors...)...)
 	fn(server)
 
-	var wrap func(http.Handler) http.Handler
+	adapter := routerAdapter(hub.r.PathPrefixHandlerHTTP)
 	if len(hub.cors) > 0 {
 		cnf := cors.Options{
 			AllowedOrigins: hub.cors,
@@ -58,28 +58,24 @@ func (hub *ConnectHub) Mount(fn MountFn, interceptors ...connect.ServerIntercept
 			MaxAge: 300,
 		}
 		c := cors.New(cnf)
-		wrap = c.Handler
+		adapter = func(pattern string, handler http.Handler) {
+			hub.r.PathPrefixHandlerHTTP(pattern, c.Handler(handler))
+		}
 	}
 
 	jsonCodec := connectproto.NewJSONCodec()
 	jsonCodec.MarshalOptions.EmitUnpopulated = true
 
-	connecthttp.Mount(&routerAdapter{hub: hub, wrap: wrap}, server,
+	connecthttp.Mount(adapter, server,
 		connecthttp.WithCodecs(connectproto.NewBinaryCodec(), jsonCodec),
 		connecthttp.WithReadMaxBytes(0),
 	)
 }
 
-type routerAdapter struct {
-	hub  *ConnectHub
-	wrap func(http.Handler) http.Handler
-}
+type routerAdapter func(pattern string, handler http.Handler)
 
-func (a *routerAdapter) Handle(pattern string, handler http.Handler) {
-	if a.wrap != nil {
-		handler = a.wrap(handler)
-	}
-	a.hub.r.PathPrefixHandlerHTTP(pattern, handler)
+func (a routerAdapter) Handle(pattern string, handler http.Handler) {
+	a(pattern, handler)
 }
 
 // ConnectHubOption configures the Connect hub.

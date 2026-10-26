@@ -41,10 +41,6 @@ enginedata.RegisterServer(hub)
 server.Serve()
 ```
 
-The service implementation returned by `NewServer()` remains the API package's
-own type. Interceptors supplied to one mount do not apply to other mounts.
-
-
 ## Contributing
 
 You can make pull requests or create issues in GitHub. Any code you send should be formatted using `make gofmt`.
