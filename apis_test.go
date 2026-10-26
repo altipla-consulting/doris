@@ -13,6 +13,7 @@ import (
 	"github.com/altipla-consulting/telemetry"
 	"github.com/altipla-consulting/telemetry/logging"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/altipla-consulting/doris"
 )
@@ -117,16 +118,32 @@ func TestServiceKnownConnectError(t *testing.T) {
 	requireConnectError(t, err, connect.CodeNotFound, "health check example error")
 }
 
-func TestWithInterceptors(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25000"))
-	hub := doris.NewConnectHub(r.Router)
+func registerAuthenticatedServer(hub *doris.ConnectHub) {
 	hub.Mount(func(s *connect.Server) {
 		grpchealth.Register(s, successServer{})
-	}, doris.WithInterceptors(func(next connect.ServerFunc) connect.ServerFunc {
+	}, func(next connect.ServerFunc) connect.ServerFunc {
 		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
-			return connect.NewError(connect.CodeUnauthenticated, "missing credentials")
+			info, _ := connect.CallInfoForServerContext(ctx)
+			if info.RequestHeader().Get("Authorization") != "Bearer test-token" {
+				return connect.NewError(connect.CodeUnauthenticated, "missing credentials")
+			}
+			return next(ctx, spec, stream)
 		}
-	}))
+	})
+}
+
+func TestMountInterceptors(t *testing.T) {
+	r := doris.NewServer(doris.WithPort("25000"))
+	hub := doris.NewConnectHub(r.Router)
+	registerAuthenticatedServer(hub)
+	hub.Mount(func(s *connect.Server) {
+		s.Register(connect.Method{
+			Spec: connect.Spec{Procedure: "/doris.test.Public/Check"},
+			Handler: func(context.Context, connect.Spec, connect.ServerStream) error {
+				return connect.Errorf(connect.CodeNotFound, "public service reached")
+			},
+		})
+	})
 	go r.Serve()
 	t.Cleanup(r.Close)
 
@@ -134,4 +151,16 @@ func TestWithInterceptors(t *testing.T) {
 	client := grpchealth.NewClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, "http://localhost:25000")))
 	_, err := client.Check(context.Background(), new(grpchealth.CheckRequest))
 	requireConnectError(t, err, connect.CodeUnauthenticated, "missing credentials")
+
+	publicClient := connect.NewClient(connecthttp.NewTransport(http.DefaultClient, "http://localhost:25000"))
+	err = publicClient.CallUnary(context.Background(), connect.Spec{
+		Procedure: "/doris.test.Public/Check",
+	}, new(emptypb.Empty), new(emptypb.Empty))
+	requireConnectError(t, err, connect.CodeNotFound, "public service reached")
+
+	ctx, info := connect.NewClientContext(context.Background())
+	info.RequestHeader().Set("Authorization", "Bearer test-token")
+	status, err := client.Check(ctx, new(grpchealth.CheckRequest))
+	require.NoError(t, err)
+	require.Equal(t, grpchealth.StatusServing, status.Status)
 }

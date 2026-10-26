@@ -12,9 +12,8 @@ import (
 
 // ConnectHub helps mounting Connect APIs to their correct endpoints.
 type ConnectHub struct {
-	r            *Router
-	cors         []string
-	interceptors []connect.ServerInterceptor
+	r    *Router
+	cors []string
 }
 
 // NewConnectHub creates a new hub prepared to mount Connect APIs.
@@ -32,31 +31,11 @@ func NewConnectHub(r *Router, opts ...ConnectHubOption) *ConnectHub {
 // MountFn registers one or more Connect services on a server.
 type MountFn func(server *connect.Server)
 
-// MountOption configures a single Mount call.
-type MountOption func(cnf *mountConfig)
-
-type mountConfig struct {
-	interceptors []connect.ServerInterceptor
-}
-
-// WithInterceptors adds server interceptors for this Mount only.
-// They run after the hub interceptors from WithInterceptors.
-func WithInterceptors(interceptors ...connect.ServerInterceptor) MountOption {
-	return func(cnf *mountConfig) {
-		cnf.interceptors = append(cnf.interceptors, interceptors...)
-	}
-}
-
-// Mount a new API.
-func (hub *ConnectHub) Mount(fn MountFn, opts ...MountOption) {
-	cnf := new(mountConfig)
-	for _, opt := range opts {
-		opt(cnf)
-	}
-
-	interceptors := append(ServerInterceptors(), hub.interceptors...)
-	interceptors = append(interceptors, cnf.interceptors...)
-	server := connect.NewServer(interceptors...)
+// Mount registers and serves a new API on its own Connect server.
+// The standard Doris interceptors always run before the supplied interceptors,
+// which apply only to the services registered by fn.
+func (hub *ConnectHub) Mount(fn MountFn, interceptors ...connect.ServerInterceptor) {
+	server := connect.NewServer(append(ServerInterceptors(), interceptors...)...)
 	fn(server)
 
 	var wrap func(http.Handler) http.Handler
