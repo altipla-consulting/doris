@@ -1,4 +1,4 @@
-package doris_test
+package doris
 
 import (
 	"context"
@@ -14,8 +14,7 @@ import (
 	"github.com/altipla-consulting/telemetry/logging"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/emptypb"
-
-	"github.com/altipla-consulting/doris"
+	pb "libs.altipla.consulting/hosting/testdata"
 )
 
 func init() {
@@ -38,10 +37,9 @@ func (successServer) Check(context.Context, *grpchealth.CheckRequest) (*grpcheal
 }
 
 func TestMount(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25000"))
+	r := NewServer(WithPort("25000"))
 
-	hub := doris.NewConnectHub(r.Router)
-	hub.Mount(func(s *connect.Server) {
+	r.MountAPI(func(s *connect.Server) {
 		grpchealth.Register(s, successServer{})
 	})
 
@@ -62,9 +60,8 @@ func (panicChecker) Check(context.Context, *grpchealth.CheckRequest) (*grpchealt
 }
 
 func TestServicePanic(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25000"))
-	hub := doris.NewConnectHub(r.Router)
-	hub.Mount(func(s *connect.Server) {
+	r := NewServer(WithPort("25000"))
+	r.MountAPI(func(s *connect.Server) {
 		grpchealth.Register(s, panicChecker{})
 	})
 	go r.Serve()
@@ -85,9 +82,8 @@ func (c errorChecker) Check(context.Context, *grpchealth.CheckRequest) (*grpchea
 }
 
 func TestServiceInternalError(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25000"))
-	hub := doris.NewConnectHub(r.Router)
-	hub.Mount(func(s *connect.Server) {
+	r := NewServer(WithPort("25000"))
+	r.MountAPI(func(s *connect.Server) {
 		grpchealth.Register(s, errorChecker{
 			err: errors.New("health check example error"),
 		})
@@ -102,9 +98,8 @@ func TestServiceInternalError(t *testing.T) {
 }
 
 func TestServiceKnownConnectError(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25000"))
-	hub := doris.NewConnectHub(r.Router)
-	hub.Mount(func(s *connect.Server) {
+	r := NewServer(WithPort("25000"))
+	r.MountAPI(func(s *connect.Server) {
 		grpchealth.Register(s, errorChecker{
 			err: connect.Errorf(connect.CodeNotFound, "health check example error"),
 		})
@@ -118,8 +113,8 @@ func TestServiceKnownConnectError(t *testing.T) {
 	requireConnectError(t, err, connect.CodeNotFound, "health check example error")
 }
 
-func registerAuthenticatedServer(hub *doris.ConnectHub) {
-	hub.Mount(func(s *connect.Server) {
+func registerAuthenticatedServer(router *Router) {
+	router.MountAPI(func(s *connect.Server) {
 		grpchealth.Register(s, successServer{})
 	}, func(next connect.ServerFunc) connect.ServerFunc {
 		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
@@ -133,10 +128,9 @@ func registerAuthenticatedServer(hub *doris.ConnectHub) {
 }
 
 func TestMountInterceptors(t *testing.T) {
-	r := doris.NewServer(doris.WithPort("25000"))
-	hub := doris.NewConnectHub(r.Router)
-	registerAuthenticatedServer(hub)
-	hub.Mount(func(s *connect.Server) {
+	r := NewServer(WithPort("25000"))
+	registerAuthenticatedServer(r.Router)
+	r.MountAPI(func(s *connect.Server) {
 		s.Register(connect.Method{
 			Spec: connect.Spec{Procedure: "/doris.test.Public/Check"},
 			Handler: func(context.Context, connect.Spec, connect.ServerStream) error {
@@ -163,4 +157,52 @@ func TestMountInterceptors(t *testing.T) {
 	status, err := client.Check(ctx, new(grpchealth.CheckRequest))
 	require.NoError(t, err)
 	require.Equal(t, grpchealth.StatusServing, status.Status)
+}
+
+func TestTrimStrings(t *testing.T) {
+	in := &pb.TrimTest{
+		Direct: "  direct\n\t",
+		Sub: &pb.Message{
+			Child:         "  child",
+			RepeatedChild: []string{"  repeated child1", "repeated child2  "},
+		},
+		Map: map[string]string{
+			"  key": "  value",
+		},
+		List: []string{"  item"},
+		Mapsub: map[string]*pb.Message{
+			"  key": {
+				Child: "  mapsub child",
+			},
+		},
+		Oneof1: &pb.TrimTest_OneofDirect1{
+			OneofDirect1: "  oneof_direct1",
+		},
+		Oneof2: &pb.TrimTest_OneofSub2{
+			OneofSub2: &pb.Message{
+				Child: "  oneof_child",
+			},
+		},
+		RepeatedMessage: []*pb.Message{
+			{Child: "  repeated1"},
+			{Child: "repeated2  "},
+		},
+		Enum: pb.TrimTest_TEST_FOO,
+	}
+	out := trimMessage(in.ProtoReflect()).Interface().(*pb.TrimTest)
+	require.Equal(t, out.Direct, "direct")
+	require.Equal(t, out.Sub.Child, "child")
+	require.Equal(t, out.Sub.RepeatedChild, []string{"repeated child1", "repeated child2"})
+	require.Equal(t, out.Map, map[string]string{"key": "value"})
+	require.Nil(t, out.Empty)
+	require.Equal(t, out.List, []string{"item"})
+	require.Contains(t, out.Mapsub, "key")
+	require.Equal(t, out.Mapsub["key"].Child, "mapsub child")
+	require.Len(t, out.Mapsub, 1)
+	require.Equal(t, out.GetOneofDirect1(), "oneof_direct1")
+	require.Equal(t, out.GetOneofSub2().Child, "oneof_child")
+	require.Len(t, out.RepeatedMessage, 2)
+	require.Equal(t, out.RepeatedMessage[0].Child, "repeated1")
+	require.Equal(t, out.RepeatedMessage[1].Child, "repeated2")
+	require.Equal(t, out.Enum, pb.TrimTest_TEST_FOO)
 }
