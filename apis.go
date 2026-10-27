@@ -38,6 +38,7 @@ func (hub *ConnectHub) Mount(fn MountFn, interceptors ...connect.ServerIntercept
 	)
 }
 
+// ConnectCORS configures the standard CORS options for Connect APIs.
 func ConnectCORS(origins []string) cors.Options {
 	return cors.Options{
 		AllowedOrigins: origins,
