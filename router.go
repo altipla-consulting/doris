@@ -20,9 +20,13 @@ func (r *Router) PathPrefixHandlerHTTP(path string, handler http.Handler) {
 	r.PathPrefixHandler(path, routing.NewHandlerFromHTTP(stdMiddlewares(handler)))
 }
 
-// Handle sends all request to the standard HTTP handler.
-func (r *Router) Handle(handler http.Handler) {
+// Handler sends all request to the standard HTTP handler.
+func (r *Router) Handler(handler http.Handler) {
 	r.PathPrefixHandlerHTTP("", stdMiddlewares(handler))
+}
+
+func (r *Router) Handle(pattern string, handler http.Handler) {
+	r.PathPrefixHandler(pattern, routing.NewHandlerFromHTTP(stdMiddlewares(handler)))
 }
 
 func stdMiddlewares(handler http.Handler) http.Handler {
