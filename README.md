@@ -26,8 +26,8 @@ and the `auth.STS` server interceptor:
 
 ```go
 func RegisterServer(server *doris.Server) {
-    server.MountAPI(func(r *connect.Server) {
-        engine_dataconnect.RegisterEngineDataServiceHandler(r, NewServer())
+    server.MountAPI(func(s *connect.Server) {
+        engine_dataconnect.RegisterEngineDataServiceHandler(s, NewServer())
     }, auth.STS("engine_data.read"))
 }
 ```
