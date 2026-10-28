@@ -9,23 +9,14 @@ import (
 
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
-	"github.com/altipla-consulting/sentry"
 	"github.com/altipla-consulting/telemetry"
 )
 
 type HandlerError func(w http.ResponseWriter, r *http.Request) error
 
+// Handler adapts an error-returning function to an HTTP handler and reports returned errors.
 func Handler(handler HandlerError) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r = sentry.WithRequest(r)
-
-		defer func() {
-			if rec := errors.Recover(recover()); rec != nil {
-				Error(w, http.StatusInternalServerError)
-				telemetry.ReportError(r.Context(), rec)
-			}
-		}()
-
 		if err := handler(w, r); err != nil {
 			if errors.Is(r.Context().Err(), context.Canceled) {
 				Error(w, http.StatusRequestTimeout)

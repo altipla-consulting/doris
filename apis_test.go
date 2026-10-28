@@ -3,6 +3,8 @@ package doris
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,9 +14,11 @@ import (
 	"github.com/altipla-consulting/errors"
 	"github.com/altipla-consulting/telemetry"
 	"github.com/altipla-consulting/telemetry/logging"
+	"github.com/rs/cors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/emptypb"
-	pb "libs.altipla.consulting/hosting/testdata"
+
+	pb "github.com/altipla-consulting/doris/internal/testdata"
 )
 
 func init() {
@@ -39,7 +43,7 @@ func (successServer) Check(context.Context, *grpchealth.CheckRequest) (*grpcheal
 func TestMount(t *testing.T) {
 	r := NewServer(WithPort("25000"))
 
-	r.MountAPI(func(s *connect.Server) {
+	MountAPI(r, func(s *connect.Server) {
 		grpchealth.Register(s, successServer{})
 	})
 
@@ -53,6 +57,52 @@ func TestMount(t *testing.T) {
 	require.Equal(t, grpchealth.StatusServing, status.Status)
 }
 
+func TestMountWithCORSSubrouter(t *testing.T) {
+	server := NewServer()
+	sub := server.Subrouter()
+	sub.Use(cors.New(ConnectCORS([]string{"https://example.com"})).Handler)
+	MountAPI(sub, func(s *connect.Server) {
+		grpchealth.Register(s, successServer{})
+	})
+	server.HandleFunc("/other", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+	})
+
+	httpServer := httptest.NewServer(server)
+	t.Cleanup(httpServer.Close)
+
+	procedure := "/grpc.health.v1.Health/Check"
+	request, err := http.NewRequest(http.MethodOptions, httpServer.URL+procedure, nil)
+	require.NoError(t, err)
+	request.Header.Set("Origin", "https://example.com")
+	request.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	request.Header.Set("Access-Control-Request-Headers", "connect-protocol-version, content-type")
+	response, err := httpServer.Client().Do(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusNoContent, response.StatusCode)
+	require.Equal(t, "https://example.com", response.Header.Get("Access-Control-Allow-Origin"))
+	require.Contains(t, response.Header.Get("Access-Control-Allow-Methods"), http.MethodPost)
+	require.Contains(t, strings.ToLower(response.Header.Get("Access-Control-Allow-Headers")), "connect-protocol-version")
+
+	ctx, info := connect.NewClientContext(context.Background())
+	info.RequestHeader().Set("Origin", "https://example.com")
+	client := grpchealth.NewClient(connect.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
+	status, err := client.Check(ctx, new(grpchealth.CheckRequest))
+	require.NoError(t, err)
+	require.Equal(t, grpchealth.StatusServing, status.Status)
+	require.Equal(t, "https://example.com", info.ResponseHeader().Get("Access-Control-Allow-Origin"))
+
+	siblingRequest, err := http.NewRequest(http.MethodGet, httpServer.URL+"/other", nil)
+	require.NoError(t, err)
+	siblingRequest.Header.Set("Origin", "https://example.com")
+	siblingResponse, err := httpServer.Client().Do(siblingRequest)
+	require.NoError(t, err)
+	defer siblingResponse.Body.Close()
+	require.Equal(t, http.StatusAccepted, siblingResponse.StatusCode)
+	require.Empty(t, siblingResponse.Header.Get("Access-Control-Allow-Origin"))
+}
+
 type panicChecker struct{}
 
 func (panicChecker) Check(context.Context, *grpchealth.CheckRequest) (*grpchealth.CheckResponse, error) {
@@ -61,7 +111,7 @@ func (panicChecker) Check(context.Context, *grpchealth.CheckRequest) (*grpchealt
 
 func TestServicePanic(t *testing.T) {
 	r := NewServer(WithPort("25000"))
-	r.MountAPI(func(s *connect.Server) {
+	MountAPI(r, func(s *connect.Server) {
 		grpchealth.Register(s, panicChecker{})
 	})
 	go r.Serve()
@@ -83,7 +133,7 @@ func (c errorChecker) Check(context.Context, *grpchealth.CheckRequest) (*grpchea
 
 func TestServiceInternalError(t *testing.T) {
 	r := NewServer(WithPort("25000"))
-	r.MountAPI(func(s *connect.Server) {
+	MountAPI(r, func(s *connect.Server) {
 		grpchealth.Register(s, errorChecker{
 			err: errors.New("health check example error"),
 		})
@@ -99,7 +149,7 @@ func TestServiceInternalError(t *testing.T) {
 
 func TestServiceKnownConnectError(t *testing.T) {
 	r := NewServer(WithPort("25000"))
-	r.MountAPI(func(s *connect.Server) {
+	MountAPI(r, func(s *connect.Server) {
 		grpchealth.Register(s, errorChecker{
 			err: connect.Errorf(connect.CodeNotFound, "health check example error"),
 		})
@@ -114,7 +164,7 @@ func TestServiceKnownConnectError(t *testing.T) {
 }
 
 func registerAuthenticatedServer(router *Router) {
-	router.MountAPI(func(s *connect.Server) {
+	MountAPI(router, func(s *connect.Server) {
 		grpchealth.Register(s, successServer{})
 	}, func(next connect.ServerFunc) connect.ServerFunc {
 		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
@@ -130,7 +180,7 @@ func registerAuthenticatedServer(router *Router) {
 func TestMountInterceptors(t *testing.T) {
 	r := NewServer(WithPort("25000"))
 	registerAuthenticatedServer(r.Router)
-	r.MountAPI(func(s *connect.Server) {
+	MountAPI(r, func(s *connect.Server) {
 		s.Register(connect.Method{
 			Spec: connect.Spec{Procedure: "/doris.test.Public/Check"},
 			Handler: func(context.Context, connect.Spec, connect.ServerStream) error {

@@ -4,9 +4,49 @@ import (
 	"net/http"
 	"strings"
 
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/connect/v2/connectproto"
+	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+// MountFn registers one or more Connect services on a server.
+type MountFn func(server *connect.Server)
+
+type apiRoutes interface {
+	Handle(path string, handler http.Handler) *mux.Route
+	PathPrefix(path string) *mux.Route
+}
+
+// MountAPI registers API routes on an application router served by Doris.
+// The standard Doris interceptors run before the supplied interceptors.
+func MountAPI(router apiRoutes, fn MountFn, interceptors ...connect.ServerInterceptor) {
+	server := connect.NewServer(append(ServerInterceptors(), interceptors...)...)
+	fn(server)
+
+	jsonCodec := connectproto.NewJSONCodec()
+	jsonCodec.MarshalOptions.EmitUnpopulated = true
+
+	connecthttp.Mount(apiRouter{router}, server,
+		connecthttp.WithCodecs(connectproto.NewBinaryCodec(), jsonCodec),
+		connecthttp.WithReadMaxBytes(0),
+	)
+}
+
+type apiRouter struct {
+	apiRoutes
+}
+
+// Handle registers exact procedures and service prefixes using Connect's mux semantics.
+func (r apiRouter) Handle(pattern string, handler http.Handler) {
+	if strings.HasSuffix(pattern, "/") {
+		r.PathPrefix(pattern).Handler(handler)
+		return
+	}
+	r.apiRoutes.Handle(pattern, handler)
+}
 
 // ConnectCORS configures the standard CORS options for Connect APIs.
 func ConnectCORS(origins []string) cors.Options {

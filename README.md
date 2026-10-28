@@ -26,13 +26,13 @@ and the `auth.STS` server interceptor:
 
 ```go
 func RegisterServer(server *doris.Server) {
-    server.MountAPI(func(s *connect.Server) {
+    doris.MountAPI(server, func(s *connect.Server) {
         engine_dataconnect.RegisterEngineDataServiceHandler(s, NewServer())
     }, auth.STS("engine_data.read"))
 }
 ```
 
-An API without additional interceptors simply omits the second argument to
+An API without additional interceptors simply omits the third argument to
 `MountAPI`. Application startup calls each package's registration function:
 
 ```go

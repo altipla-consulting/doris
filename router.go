@@ -5,55 +5,68 @@ import (
 	"net/http"
 	"time"
 
-	"connectrpc.com/connect/v2"
-	"connectrpc.com/connect/v2/connecthttp"
-	"connectrpc.com/connect/v2/connectproto"
 	"github.com/altipla-consulting/errors"
 	"github.com/altipla-consulting/sentry"
 	"github.com/altipla-consulting/telemetry"
-	"libs.altipla.consulting/routing"
+	"github.com/gorilla/mux"
 )
 
 type Router struct {
-	*routing.Server
+	*mux.Router
 }
 
-// PathPrefixHandlerHTTP registers a new HTTP handler for all the routes under the specified prefix.
-func (r *Router) PathPrefixHandlerHTTP(path string, handler http.Handler) {
-	r.PathPrefixHandler(path, routing.NewHandlerFromHTTP(stdMiddlewares(handler)))
+// Get registers a GET route, which also handles HEAD requests.
+func (r *Router) Get(path string, handler HandlerError) {
+	r.Handle(path, Handler(handler)).Methods(http.MethodGet, http.MethodHead)
 }
 
-// Handler sends all request to the standard HTTP handler.
+// Post registers a POST route.
+func (r *Router) Post(path string, handler HandlerError) {
+	r.Handle(path, Handler(handler)).Methods(http.MethodPost)
+}
+
+// Put registers a PUT route.
+func (r *Router) Put(path string, handler HandlerError) {
+	r.Handle(path, Handler(handler)).Methods(http.MethodPut)
+}
+
+// Patch registers a PATCH route.
+func (r *Router) Patch(path string, handler HandlerError) {
+	r.Handle(path, Handler(handler)).Methods(http.MethodPatch)
+}
+
+// Delete registers a DELETE route.
+func (r *Router) Delete(path string, handler HandlerError) {
+	r.Handle(path, Handler(handler)).Methods(http.MethodDelete)
+}
+
+// Options registers an OPTIONS route.
+func (r *Router) Options(path string, handler HandlerError) {
+	r.Handle(path, Handler(handler)).Methods(http.MethodOptions)
+}
+
+// Head registers a HEAD route.
+func (r *Router) Head(path string, handler HandlerError) {
+	r.Handle(path, Handler(handler)).Methods(http.MethodHead)
+}
+
+// Handler registers an application handler as the fallback for routes not handled by Doris.
 func (r *Router) Handler(handler http.Handler) {
-	r.PathPrefixHandlerHTTP("", stdMiddlewares(handler))
+	r.NewRoute().Handler(handler)
 }
 
-// Handle implements the standard http interface.
-func (r *Router) Handle(pattern string, handler http.Handler) {
-	r.PathPrefixHandler(pattern, routing.NewHandlerFromHTTP(stdMiddlewares(handler)))
-}
-
-// MountFn registers one or more Connect services on a server.
-type MountFn func(server *connect.Server)
-
-// Mount registers and serves a new API on its own Connect server.
-// The standard Doris interceptors always run before the supplied interceptors,
-// which apply only to the services registered by fn.
-func (r *Router) MountAPI(fn MountFn, interceptors ...connect.ServerInterceptor) {
-	server := connect.NewServer(append(ServerInterceptors(), interceptors...)...)
-	fn(server)
-
-	jsonCodec := connectproto.NewJSONCodec()
-	jsonCodec.MarshalOptions.EmitUnpopulated = true
-
-	connecthttp.Mount(r, server,
-		connecthttp.WithCodecs(connectproto.NewBinaryCodec(), jsonCodec),
-		connecthttp.WithReadMaxBytes(0),
-	)
+// Subrouter creates an unrestricted route group that inherits the server middleware.
+func (r *Router) Subrouter() *mux.Router {
+	return r.NewRoute().Subrouter()
 }
 
 func stdMiddlewares(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Expose Gorilla route parameters through the standard request API.
+		for name, value := range mux.Vars(r) {
+			r.SetPathValue(name, value)
+		}
+
 		// Timeout.
 		ctx := r.Context()
 		ctx, cancel := context.WithTimeout(ctx, 29*time.Second)
@@ -62,6 +75,11 @@ func stdMiddlewares(handler http.Handler) http.Handler {
 
 		// Sentry body logging.
 		r = sentry.WithRequest(r)
+
+		// Request access from handler contexts.
+		request := new(requestContext)
+		r = r.WithContext(context.WithValue(r.Context(), requestKey{}, request))
+		request.request = r
 
 		// Recover panics.
 		defer func() {
