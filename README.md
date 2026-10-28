@@ -65,6 +65,29 @@ mounted on it. Other routes registered on the server keep their own behavior.
 Leave the subrouter unrestricted by HTTP method so the CORS middleware can
 handle browser `OPTIONS` preflight requests as well as API calls.
 
+Applications usually expose several APIs with the same CORS policy. Instead of
+configuring CORS inside each package, create the subrouter once during startup
+and pass the same `*mux.Router` to every registration function:
+
+```go
+func RegisterServer(r *mux.Router) {
+    doris.MountAPI(r, func(s *connect.Server) {
+        engine_dataconnect.RegisterEngineDataServiceHandler(s, NewServer())
+    }, auth.STS("engine_data.read"))
+}
+```
+
+```go
+server := doris.NewServer()
+
+api := server.Subrouter()
+api.Use(cors.New(doris.ConnectCORS([]string{"https://example.com"})).Handler)
+enginedata.RegisterServer(api)
+billing.RegisterServer(api)
+
+server.Serve()
+```
+
 ## Contributing
 
 You can make pull requests or create issues in GitHub. Any code you send should be formatted using `make gofmt`.
