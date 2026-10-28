@@ -1,20 +1,9 @@
 package doris
 
-import (
-	"net"
-
-	"libs.altipla.consulting/routing"
-)
+import "net"
 
 // Option of a server.
 type Option func(s *Server, sp *ServerPort, internal bool)
-
-// WithRoutingOptions configures web server options.
-func WithRoutingOptions(opts ...routing.ServerOption) Option {
-	return func(s *Server, sp *ServerPort, internal bool) {
-		sp.http = append(sp.http, opts...)
-	}
-}
 
 // WithPort changes the default port of the application. If the env variable
 // PORT is defined it will override anything configured here.

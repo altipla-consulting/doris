@@ -14,10 +14,10 @@ import (
 	"github.com/altipla-consulting/env"
 	"github.com/altipla-consulting/errors"
 	"github.com/altipla-consulting/telemetry/logging"
+	"github.com/gorilla/mux"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
-	"libs.altipla.consulting/routing"
 )
 
 // Server is the root server of the application.
@@ -141,7 +141,6 @@ type ServerPort struct {
 	*Router
 
 	// Configurations from options passed when initializing the port.
-	http     []routing.ServerOption
 	listener net.Listener
 	port     string
 
@@ -151,9 +150,6 @@ type ServerPort struct {
 
 func newServerPort(s *Server, opts []Option, internal bool) *ServerPort {
 	sp := &ServerPort{
-		http: []routing.ServerOption{
-			routing.WithSentry(os.Getenv("SENTRY_DSN")),
-		},
 		port: "8080",
 	}
 	if p := os.Getenv("PORT"); p != "" {
@@ -167,9 +163,10 @@ func newServerPort(s *Server, opts []Option, internal bool) *ServerPort {
 	}
 
 	sp.Router = &Router{
-		Server: routing.NewServer(sp.http...),
+		Router: mux.NewRouter(),
 	}
 
+	sp.Use(stdMiddlewares)
 	sp.Get("/health", healthHandler)
 
 	return sp
