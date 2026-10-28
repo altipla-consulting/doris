@@ -20,6 +20,8 @@ func TestRouterPatternsAndFallback(t *testing.T) {
 		request := RequestFromContext(r.Context())
 		require.Same(t, r, request)
 		require.Equal(t, "42", request.PathValue("id"))
+		require.Equal(t, "42", Param(request, "id"))
+		require.Empty(t, Param(request, "missing"))
 		deadline, ok := r.Context().Deadline()
 		require.True(t, ok)
 		require.WithinDuration(t, time.Now().Add(29*time.Second), deadline, time.Second)
